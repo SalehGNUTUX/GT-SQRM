@@ -7,7 +7,7 @@
 
 **نسخة سطح المكتب من GT-SQR — حصرياً لنظام GNU/Linux**
 
-[![License: GPLv2](https://img.shields.io/badge/License-GPLv2-green.svg)](https://www.gnu.org/licenses/old-licenses/gpl-2.0.html)
+[![License: GPLv3](https://img.shields.io/badge/License-GPLv3-green.svg)](https://www.gnu.org/licenses/old-licenses/gpl-3.0.html)
 [![Platform: Linux](https://img.shields.io/badge/Platform-GNU%2FLinux-orange?logo=linux)](https://github.com/SalehGNUTUX/GT-SQRM)
 [![Electron](https://img.shields.io/badge/Built%20with-Electron-47848F?logo=electron)](https://www.electronjs.org/)
 [![ffmpeg](https://img.shields.io/badge/Export-ffmpeg-green?logo=ffmpeg)](https://ffmpeg.org/)

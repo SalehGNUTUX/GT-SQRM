@@ -91,4 +91,4 @@ GT-SQRM/
 
 ## الرخصة
 
-GNU General Public License v2.0 — مفتوح المصدر بالكامل.
+GNU General Public License v3.0 — مفتوح المصدر بالكامل.

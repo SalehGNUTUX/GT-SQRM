@@ -1,0 +1,47 @@
+[
+  {
+    "name": "Amiri Quran",
+    "file": "amiri-quran.ttf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "Uthmanic Hafs",
+    "file": "UthmanicHafs1%20Ver13.otf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "Noto Sans Arabic Thin",
+    "file": "NotoSansArabic-Thin.ttf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "Noto Sans Arabic ExtraLight",
+    "file": "NotoSansArabic-ExtraLight.ttf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "Noto Sans Arabic Regular",
+    "file": "NotoSansArabic-Regular.ttf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "Ubuntu Arabic Regular",
+    "file": "Ubuntu%20Arabic%20Regular.otf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "KAHandNaskh-Regular",
+    "file": "KAHandNaskh-Regular.ttf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "Ubuntu Arabic Bold",
+    "file": "Ubuntu%20Arabic%20Bold.ttf",
+    "sample": "بِسْمِ اللَّهِ"
+  },
+  {
+    "name": "Arslan Wessam",
+    "file": "Arslan%20Wessam.ttf",
+    "sample": "بِسْمِ اللَّهِ"
+  }
+]

@@ -1,0 +1,60 @@
+{
+  "name": "gt-sqrm",
+  "version": "1.0.0",
+  "description": "GnuTux Short Quran Reels Maker — صانع ريلز القرآن الكريم لنظام Linux",
+  "author": "SalehGNUTUX <https://github.com/SalehGNUTUX>",
+  "license": "GPL-2.0",
+  "homepage": "https://github.com/SalehGNUTUX/GT-SQRM",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron .",
+    "build": "electron-builder --linux AppImage",
+    "build:deb": "electron-builder --linux deb",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "fluent-ffmpeg": "^2.1.3"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.0"
+  },
+  "build": {
+    "appId": "org.gnutux.gt-sqrm",
+    "productName": "GT-SQRM",
+    "copyright": "Copyright © 2026 SalehGNUTUX — GPLv2",
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "AudioVideo",
+      "icon": "GT-SQRM-icons/electron",
+      "desktop": {
+        "Name": "GT-SQRM",
+        "Comment": "GnuTux Short Quran Reels Maker",
+        "Categories": "AudioVideo;Video;GTK;"
+      },
+      "extraFiles": [
+        {
+          "from": "resources/bin/",
+          "to": "bin/",
+          "filter": [
+            "ffmpeg",
+            "yt-dlp"
+          ]
+        }
+      ]
+    },
+    "files": [
+      "src/**/*",
+      "GT-SQRM-icons/**/*",
+      "!resources/bin/**/*"
+    ],
+    "directories": {
+      "buildResources": "GT-SQRM-icons",
+      "output": "dist"
+    }
+  }
+}

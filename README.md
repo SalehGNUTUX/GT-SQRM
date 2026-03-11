@@ -2,6 +2,8 @@
 
 # GT-SQRM
 ### GnuTux Short Quran Reels Maker
+<img src="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-icon.png" width="256" alt="GT-SQR Logo" />
+
 
 **نسخة سطح المكتب من GT-SQR — حصرياً لنظام GNU/Linux**
 

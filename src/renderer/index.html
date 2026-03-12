@@ -799,10 +799,10 @@ body.offline .offline-badge{display:block}
             <div class="fg">
               <label class="fl">الموضع</label>
               <select class="fc" id="logo-pos">
+                <option value="tr" selected>أعلى اليمين</option>
+                <option value="tl">أعلى اليسار</option>
                 <option value="br">أسفل اليمين</option>
                 <option value="bl">أسفل اليسار</option>
-                <option value="tr">أعلى اليمين</option>
-                <option value="tl">أعلى اليسار</option>
                 <option value="center">الوسط</option>
               </select>
             </div>
@@ -1054,13 +1054,18 @@ body.offline .offline-badge{display:block}
 
       <!-- ABOUT -->
       <div class="tp" id="tab-about">
-        <div class="about-logo"><div class="al-icon">📿</div><h2>GT-SQRM</h2><p>GnuTux Short Quran Reels Maker</p></div>
+        <div class="about-logo">
+          <img src="GT-SQRM-icons/all/256x256/GT-SQRM-icon.png" class="al-icon" alt="GT-SQRM" style="width:80px; height:80px;">
+          <h2>GT-SQRM</h2>
+          <p>GnuTux Short Quran Reels Maker</p>
+        </div>
         <div class="sec">
           <div class="sec-t">📋 المشروع</div>
-          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">2.0.0</span></div>
+          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">1.1.0</span></div>
           <div class="info-row"><span class="info-k">المطور</span><span class="info-v"><a href="https://github.com/SalehGnuTux" target="_blank">@SalehGnuTux</a></span></div>
           <div class="info-row"><span class="info-k">المستودع</span><span class="info-v"><a href="https://github.com/SalehGnuTux/GT-SQRM" target="_blank">GitHub/GT-SQRM</a></span></div>
-          <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv2</span></div>
+          <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv3
+          </span></div>
         </div>
         <div class="sec">
           <div class="sec-t">🔌 المصادر</div>
@@ -1069,7 +1074,7 @@ body.offline .offline-badge{display:block}
           <div class="info-row"><span class="info-k">الخطوط</span><span class="info-v">Google Fonts + محلي</span></div>
           <div class="info-row"><span class="info-k">PWA Offline</span><span class="info-v">✅ Service Worker</span></div>
         </div>
-        <div class="credits">بُني بـ ❤️ لخدمة القرآن الكريم<br><a href="https://github.com/SalehGnuTux/GT-SQR" target="_blank">⭐ GitHub</a></div>
+        <div class="credits">بُني بـ ❤️ لخدمة القرآن الكريم<br><a href="https://salehgnutux.github.io/gnutux/" target="_blank">⭐ GitHub</a></div>
       </div>
 
     </div>
@@ -1088,8 +1093,8 @@ body.offline .offline-badge{display:block}
         <span class="ptime" id="ptime">0:00 / 0:00</span>
       </div>
       <div class="pbtns">
-        <button class="pbtn" id="prev-aya-btn">⏮</button>
-        <button class="pbtn" id="next-aya-btn">⏭</button>
+        <button class="pbtn" id="next-aya-btn" title="الآية التالية">⏭</button>
+        <button class="pbtn" id="prev-aya-btn" title="الآية السابقة">⏮</button>
         <div class="aya-ind" id="aya-ind">الآية 1/7</div>
       </div>
     </div>

@@ -104,8 +104,8 @@
 ## 📥 التحميل والتنصيب
 
 ### التحميل المباشر
-- **AppImage**: [GT-SQRM-1.1.0.AppImage](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.AppImage)
-- **حزمة Deb**: [GT-SQRM-1.1.0.deb](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.deb)
+- **AppImage**: [GT-SQRM-1.1.0.AppImage](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.AppImage)
+- **حزمة Deb**: [GT-SQRM-1.1.0.deb](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.deb)
 
 ### تثبيت AppImage
 ```bash

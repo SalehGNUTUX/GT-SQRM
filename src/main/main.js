@@ -1,6 +1,6 @@
 "use strict";
 
-const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, shell, clipboard } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const os = require("os");
@@ -117,21 +117,35 @@ function createWindow() {
     if (isDev) console.log(`[Renderer] ${msg}`);
   });
 
-  // السماح بالقائمة السياقية (نقر أيمن) في حقول الإدخال
+  // قائمة سياقية محسنة للنسخ واللصق في أي مكان
   mainWindow.webContents.on("context-menu", (_e, params) => {
-    const { editFlags, isEditable } = params;
-    if (!isEditable) return;
-
+    const { editFlags, isEditable, linkURL, selectionText } = params;
     const { Menu, MenuItem } = require("electron");
     const menu = new Menu();
 
-    if (editFlags.canCut)   menu.append(new MenuItem({ label: "قص",   role: "cut" }));
-    if (editFlags.canCopy)  menu.append(new MenuItem({ label: "نسخ",  role: "copy" }));
-    if (editFlags.canPaste) menu.append(new MenuItem({ label: "لصق",  role: "paste" }));
-    menu.append(new MenuItem({ type: "separator" }));
-    if (editFlags.canSelectAll) menu.append(new MenuItem({ label: "تحديد الكل", role: "selectAll" }));
+    // إذا كان هناك نص محدد، أضف خيار نسخ
+    if (selectionText) {
+      menu.append(new MenuItem({ label: "نسخ النص", role: "copy" }));
+    }
+    // إذا كان هناك رابط، أضف خيار نسخ الرابط
+    if (linkURL) {
+      menu.append(new MenuItem({
+        label: "نسخ الرابط",
+        click: () => { clipboard.writeText(linkURL); }
+      }));
+    }
+    // خيارات التحرير للحقول القابلة للتحرير
+    if (isEditable) {
+      if (editFlags.canCut)   menu.append(new MenuItem({ label: "قص",   role: "cut" }));
+      if (editFlags.canCopy)  menu.append(new MenuItem({ label: "نسخ",  role: "copy" }));
+      if (editFlags.canPaste) menu.append(new MenuItem({ label: "لصق",  role: "paste" }));
+      menu.append(new MenuItem({ type: "separator" }));
+      if (editFlags.canSelectAll) menu.append(new MenuItem({ label: "تحديد الكل", role: "selectAll" }));
+    }
 
-    menu.popup({ window: mainWindow });
+    if (menu.items.length > 0) {
+      menu.popup({ window: mainWindow });
+    }
   });
 
   mainWindow.on("closed", () => {

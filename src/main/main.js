@@ -244,15 +244,23 @@ ipcMain.handle("ytdlp-download", async (event, opts) => {
 
   // تحديد مجلد الحفظ
   let saveDir = os.tmpdir();
-  if (dlSaveMode === "permanent" && dlSavePath) {
-    try {
-      if (!fs.existsSync(dlSavePath)) fs.mkdirSync(dlSavePath, { recursive: true });
-      saveDir = dlSavePath;
-    } catch (_) {
-      event.sender.send("ytdlp-progress", { line: "⚠️ فشل إنشاء المجلد — سيُستخدم /tmp" });
+  if (dlSaveMode === "permanent") {
+    if (dlSavePath) {
+      try {
+        if (!fs.existsSync(dlSavePath)) {
+          fs.mkdirSync(dlSavePath, { recursive: true });
+        }
+        saveDir = dlSavePath;
+        event.sender.send("ytdlp-progress", { line: `📁 مجلد الحفظ: ${saveDir}` });
+      } catch (err) {
+        event.sender.send("ytdlp-progress", { line: `⚠️ فشل استخدام المجلد ${dlSavePath}: ${err.message} — سيُستخدم /tmp` });
+      }
+    } else {
+      event.sender.send("ytdlp-progress", { line: "⚠️ لم يُحدد مجلد للحفظ — سيُستخدم /tmp" });
     }
+  } else {
+    event.sender.send("ytdlp-progress", { line: `📁 مجلد مؤقت: ${saveDir}` });
   }
-  event.sender.send("ytdlp-progress", { line: `📁 مجلد الحفظ: ${saveDir}` });
 
   const outTmpl = path.join(saveDir, "gt-sqrm-%(id)s-%(title).30B.%(ext)s");
 
@@ -267,7 +275,6 @@ ipcMain.handle("ytdlp-download", async (event, opts) => {
     ];
   }
 
-  // نطاق الوقت
   if (startTime || endTime) {
     const s = startTime || "00:00:00";
     const e = endTime   || "99:59:59";
@@ -288,7 +295,6 @@ ipcMain.handle("ytdlp-download", async (event, opts) => {
 
     proc.stderr.on("data", chunk => {
       stderr += chunk.toString();
-      // yt-dlp يكتب تقدم التحميل في stderr
       chunk.toString().split("\n").filter(Boolean).forEach(line =>
       event.sender.send("ytdlp-progress", { line }));
     });
@@ -306,7 +312,6 @@ ipcMain.handle("ytdlp-download", async (event, opts) => {
           return;
         }
       }
-      // ابحث في stdout أيضاً
       const destMatchOut = stdout.match(/\[download\] Destination: (.+)/m)
       || stdout.match(/\[download\] (.+?) has already been downloaded/m);
       if (destMatchOut) {
@@ -345,10 +350,9 @@ ipcMain.handle("ytdlp-download", async (event, opts) => {
   });
 });
 
-
 // ── تحميل رابط مباشر عبر wget أو aria2c ──────────────
 ipcMain.handle("direct-download", async (event, opts) => {
-  const { url, tool, type } = opts;
+  const { url, tool, type, dlSaveMode, dlSavePath } = opts;
 
   // تحديد الأداة المتاحة
   let chosenTool = tool || "wget";
@@ -376,7 +380,18 @@ ipcMain.handle("direct-download", async (event, opts) => {
     else ext = "jpg";
   }
 
-  const tmpFile = path.join(os.tmpdir(), `gt-sqrm-direct-${Date.now()}.${ext}`);
+  // تحديد مجلد الحفظ
+  let saveDir = os.tmpdir();
+  if (dlSaveMode === "permanent" && dlSavePath) {
+    try {
+      if (!fs.existsSync(dlSavePath)) fs.mkdirSync(dlSavePath, { recursive: true });
+      saveDir = dlSavePath;
+    } catch (err) {
+      event.sender.send("ytdlp-progress", { line: `⚠️ فشل المجلد — يُستخدم /tmp` });
+    }
+  }
+  event.sender.send("ytdlp-progress", { line: `📁 مجلد الحفظ: ${saveDir}` });
+  const tmpFile = path.join(saveDir, `gt-sqrm-direct-${Date.now()}.${ext}`);
 
   // بناء الأوامر
   let args;

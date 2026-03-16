@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GT-SQRM - GnuTux Short Quran Reels Maker</title>
+  <meta name="description" content="GT-SQRM - تطبيق سطح المكتب لإنشاء ريلز القرآن الكريم بجودة احترافية لنظام Linux">
+  <meta name="theme-color" content="#0a5c36" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#1a8a52" media="(prefers-color-scheme: light)">
+  
+  <!-- أيقونات PWA و favicon - نفس مسارات التطبيق -->
+  <link rel="icon" type="image/png" sizes="16x16" href="GT-SQR-icons/favicon/favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="GT-SQR-icons/favicon/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="GT-SQR-icons/favicon/favicon-48x48.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="GT-SQR-icons/all/192x192/gt-sqr-icon.png">
+  <link rel="shortcut icon" href="GT-SQR-icons/gt-sqr-icon.ico">
+  <link rel="apple-touch-icon" sizes="192x192" href="GT-SQR-icons/all/192x192/gt-sqr-icon.png">
+  <link rel="apple-touch-icon" sizes="512x512" href="GT-SQR-icons/all/512x512/gt-sqr-icon.png">
+  
+  <!-- خطوط جوجل - نفس خطوط التطبيق -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Reem+Kufi:wght@400;700&family=Scheherazade+New:wght@400;700&family=Cairo:wght@300;400;600;700;900&family=Noto+Naskh+Arabic:wght@400;700&family=Lateef:wght@400;700&family=Harmattan:wght@400;700&family=Markazi+Text:wght@400;700&family=Aref+Ruqaa&display=swap" rel="stylesheet">
+  
+  <style>
+    /* ===== متغيرات الألوان - مطابقة تماماً للتطبيق ===== */
+    :root {
+      /* الوضع الغامق (الافتراضي) */
+      --p: #0a5c36;
+      --pl: #1a8a52;
+      --pd: #063d24;
+      --a: #c9a227;
+      --al: #f0c842;
+      --ad: #8c6e16;
+      --bg0: #020b05;
+      --bg1: #050f07;
+      --bg2: #091408;
+      --bg3: #0f1d12;
+      --bg4: #14201a;
+      --b1: #1a2e1e;
+      --b2: #253c29;
+      --t1: #e8f2ea;
+      --t2: #7daa8a;
+      --t3: #3d6e4e;
+      --t4: #1f4030;
+      --danger: #e05050;
+      --info: #4a9fd5;
+      --r: 7px;
+      --rl: 13px;
+      --sh: 0 6px 32px rgba(0, 0, 0, 0.55);
+      --tr: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --fu: 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+      --border-light: 1px solid var(--b1);
+      --card-bg: var(--bg3);
+      --text-primary: var(--t1);
+      --text-secondary: var(--t2);
+      --header-bg: linear-gradient(90deg, #0c1a0e, var(--bg1));
+      --shadow: var(--sh);
+    }
+
+    /* الوضع الفاتح */
+    [data-theme="light"] {
+      --p: #1a8a52;
+      --pl: #2a9a62;
+      --pd: #0a5c36;
+      --a: #d4a227;
+      --al: #e0b842;
+      --ad: #9c7616;
+      --bg0: #f5f8f5;
+      --bg1: #e8f0e8;
+      --bg2: #dae8da;
+      --bg3: #c8e0c8;
+      --bg4: #b8d0b8;
+      --b1: #a0c0a0;
+      --b2: #80a080;
+      --t1: #1a2e1e;
+      --t2: #2a4e3a;
+      --t3: #3a6e4e;
+      --t4: #4a8e62;
+      --danger: #d03030;
+      --info: #2a7fb5;
+      --sh: 0 6px 32px rgba(0, 0, 0, 0.1);
+      --border-light: 1px solid var(--b1);
+      --card-bg: var(--bg2);
+      --text-primary: var(--t1);
+      --text-secondary: var(--t2);
+      --header-bg: linear-gradient(90deg, #c0d8c0, var(--bg1));
+      --shadow: var(--sh);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg0);
+      color: var(--text-primary);
+      font-family: var(--fu);
+      line-height: 1.6;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* ===== تخصيص شريط التمرير - مطابق للتطبيق ===== */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: var(--bg1);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--p);
+      border-radius: 6px;
+    }
+
+    /* ===== العناوين ===== */
+    h1, h2, h3, h4 {
+      font-family: var(--fu);
+      font-weight: 700;
+    }
+
+    /* ===== الروابط ===== */
+    a {
+      color: var(--info);
+      text-decoration: none;
+      transition: var(--tr);
+    }
+    a:hover {
+      color: var(--a);
+    }
+
+    /* ===== شريط التبديل بين الوضعين ===== */
+    .theme-toggle {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      z-index: 1000;
+      background: var(--card-bg);
+      border: var(--border-light);
+      border-radius: 30px;
+      padding: 5px;
+      display: flex;
+      gap: 5px;
+      box-shadow: var(--shadow);
+    }
+    .theme-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: var(--tr);
+      font-family: var(--fu);
+    }
+    .theme-btn.active {
+      background: var(--p);
+      color: #fff;
+    }
+    .theme-btn:hover:not(.active) {
+      color: var(--text-primary);
+      background: var(--bg4);
+    }
+
+    /* ===== الهيدر - مطابق للتطبيق ===== */
+    .header {
+      background: var(--header-bg);
+      border-bottom: var(--border-light);
+      padding: 0 24px;
+      height: 90px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .logo-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 11px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--pd), var(--p), var(--a));
+      box-shadow: 0 2px 14px rgba(201, 162, 39, 0.4);
+    }
+    .logo-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .logo-text h1 {
+      font-size: 24px;
+      font-weight: 900;
+      letter-spacing: 1.8px;
+      background: linear-gradient(90deg, var(--al), var(--pl));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin: 0;
+    }
+    .logo-text .subtitle {
+      font-size: 12px;
+      color: var(--t3);
+      direction: ltr;
+      letter-spacing: 0.7px;
+    }
+    .header-buttons {
+      display: flex;
+      gap: 12px;
+    }
+    .btn {
+      padding: 8px 20px;
+      border: none;
+      border-radius: var(--r);
+      cursor: pointer;
+      font-family: var(--fu);
+      font-size: 14px;
+      font-weight: 700;
+      transition: var(--tr);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--pd), var(--pl));
+      color: #fff;
+    }
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(10, 92, 54, 0.45);
+    }
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--ad), var(--al));
+      color: #050505;
+    }
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(201, 162, 39, 0.4);
+    }
+    .btn-outline {
+      background: var(--bg3);
+      border: var(--border-light);
+      color: var(--t2);
+    }
+    .btn-outline:hover {
+      border-color: var(--pl);
+      color: var(--t1);
+    }
+
+    /* ===== الحاوية الرئيسية ===== */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    /* ===== الأقسام ===== */
+    .section {
+      margin-bottom: 60px;
+    }
+    .section-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--a);
+      text-transform: uppercase;
+      letter-spacing: 1.4px;
+      margin-bottom: 24px;
+      padding-bottom: 12px;
+      border-bottom: var(--border-light);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .section-title .icon {
+      font-size: 28px;
+    }
+
+    /* ===== بطاقات المقارنة ===== */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      margin-top: 30px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: var(--border-light);
+      border-radius: var(--rl);
+      padding: 24px;
+      transition: var(--tr);
+      box-shadow: var(--shadow);
+    }
+    .card:hover {
+      transform: translateY(-4px);
+      border-color: var(--pl);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .card-icon {
+      font-size: 32px;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--al);
+    }
+    .card-list {
+      list-style: none;
+    }
+    .card-list li {
+      margin-bottom: 10px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-list .check {
+      color: var(--pl);
+      font-weight: bold;
+    }
+    .card-list .cross {
+      color: var(--danger);
+    }
+    .badge {
+      background: var(--p);
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-block;
+      margin-top: 12px;
+    }
+
+    /* ===== شبكة المميزات ===== */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+    .feature-item {
+      background: var(--card-bg);
+      border: var(--border-light);
+      border-radius: var(--rl);
+      padding: 24px;
+      transition: var(--tr);
+    }
+    .feature-item:hover {
+      border-color: var(--pl);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+    .feature-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--al);
+      margin-bottom: 12px;
+    }
+    .feature-desc {
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    /* ===== جدول الإصدارات ===== */
+    .releases-table {
+      background: var(--card-bg);
+      border: var(--border-light);
+      border-radius: var(--rl);
+      overflow: hidden;
+    }
+    .release-row {
+      display: grid;
+      grid-template-columns: 100px 1fr 120px;
+      padding: 16px 24px;
+      border-bottom: var(--border-light);
+      align-items: center;
+    }
+    .release-row:last-child {
+      border-bottom: none;
+    }
+    .release-version {
+      font-weight: 700;
+      color: var(--al);
+    }
+    .release-notes {
+      color: var(--text-primary);
+    }
+    .release-notes ul {
+      list-style: none;
+    }
+    .release-notes li {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .release-date {
+      color: var(--t3);
+      font-size: 14px;
+    }
+
+    /* ===== شيفرات التثبيت ===== */
+    .code-block {
+      background: var(--bg0);
+      border: var(--border-light);
+      border-radius: var(--r);
+      padding: 16px;
+      font-family: monospace;
+      color: var(--t2);
+      margin: 16px 0;
+      direction: ltr;
+      text-align: left;
+      overflow-x: auto;
+    }
+
+    /* ===== التذييل ===== */
+    .footer {
+      background: var(--header-bg);
+      border-top: var(--border-light);
+      padding: 40px 24px;
+      margin-top: 60px;
+    }
+    .footer-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 40px;
+    }
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .footer-logo img {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+    }
+    .footer-links h4 {
+      color: var(--al);
+      margin-bottom: 16px;
+    }
+    .footer-links ul {
+      list-style: none;
+    }
+    .footer-links li {
+      margin-bottom: 8px;
+    }
+    .footer-links a {
+      color: var(--text-secondary);
+    }
+    .footer-links a:hover {
+      color: var(--a);
+    }
+    .copyright {
+      text-align: center;
+      padding-top: 40px;
+      color: var(--t4);
+      font-size: 14px;
+    }
+
+    /* ===== الوسائط المتجاوبة ===== */
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        height: auto;
+        padding: 16px;
+      }
+      .logo {
+        margin-bottom: 16px;
+      }
+      .header-buttons {
+        width: 100%;
+        justify-content: center;
+      }
+      .release-row {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+      .theme-toggle {
+        top: auto;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== زر تبديل الوضع الفاتح/الغامق ===== -->
+<div class="theme-toggle">
+  <button class="theme-btn active" data-theme="dark">🌙 غامق</button>
+  <button class="theme-btn" data-theme="light">☀️ فاتح</button>
+</div>
+
+<!-- ===== الهيدر - مطابق للتطبيق تماماً ===== -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-icon">
+      <img src="GT-SQR-icons/all/512x512/gt-sqr-icon.png" alt="GT-SQRM">
+    </div>
+    <div class="logo-text">
+      <h1>GT-SQRM</h1>
+      <div class="subtitle">GnuTux Short Quran Reels Maker</div>
+    </div>
+  </div>
+  <div class="header-buttons">
+    <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/latest" class="btn btn-primary">📥 تحميل v1.1.0</a>
+    <a href="https://github.com/SalehGNUTUX/GT-SQRM" class="btn btn-secondary">⭐ GitHub</a>
+  </div>
+</header>
+
+<main>
+  <!-- ===== قسم الترحيب ===== -->
+  <div class="container">
+    <div class="section">
+      <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+        <h2 style="font-size: 36px; margin-bottom: 16px; background: linear-gradient(135deg, var(--a), var(--pl)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GT-SQRM</h2>
+        <p style="font-size: 18px; color: var(--t2); margin-bottom: 30px;">
+          تطبيق سطح المكتب لإنشاء ريلز القرآن الكريم بجودة احترافية<br>
+          <span style="font-size: 16px;">حصرياً لنظام GNU/Linux</span>
+        </p>
+        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" style="padding: 12px 30px;">⬇️ تحميل AppImage</a>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-secondary" style="padding: 12px 30px;">📦 تحميل Deb</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== مقارنة مع نسخة المتصفح ===== -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">⚡</span>
+        <span>الفرق عن GT-SQR (نسخة المتصفح)</span>
+      </div>
+      <div class="comparison-grid">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">🌐</span>
+            <h3 class="card-title">GT-SQR (متصفح)</h3>
+          </div>
+          <ul class="card-list">
+            <li><span class="cross">✕</span> MediaRecorder (محدود)</li>
+            <li><span class="check">✓</span> WebM · MP4 فقط</li>
+            <li><span class="cross">✕</span> محدودة بقيود المتصفح</li>
+            <li><span class="cross">✕</span> رفع يدوي فقط</li>
+            <li><span class="cross">✕</span> تحتاج HTTP server</li>
+            <li><span class="cross">✕</span> قيود CORS</li>
+            <li><span class="cross">✕</span> مقيّد</li>
+          </ul>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-icon">🐧</span>
+            <h3 class="card-title">GT-SQRM (Linux)</h3>
+          </div>
+          <ul class="card-list">
+            <li><span class="check">✓</span> <strong>ffmpeg كامل</strong></li>
+            <li><span class="check">✓</span> H.264 · H.265 · VP9 · <strong>AV1</strong></li>
+            <li><span class="check">✓</span> <strong>CRF كامل — لا سقف للجودة</strong></li>
+            <li><span class="check">✓</span> <strong>yt-dlp من يوتيوب</strong></li>
+            <li><span class="check">✓</span> مسار ملف مباشر</li>
+            <li><span class="check">✓</span> لا قيود</li>
+            <li><span class="check">✓</span> <strong>حرية كاملة</strong></li>
+          </ul>
+          <div class="badge">موصى به</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== المميزات الرئيسية ===== -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">✨</span>
+        <span>المميزات الرئيسية</span>
+      </div>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">🎬</div>
+          <h3 class="feature-title">تصدير احترافي</h3>
+          <p class="feature-desc">محرك ffmpeg مدمج لتصدير الفيديو بأعلى جودة ممكنة. صيغ متعددة: MP4 (H.264/H.265) · WebM (VP9) · MKV (AV1).</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🖼️</div>
+          <h3 class="feature-title">خلفيات متنوعة</h3>
+          <p class="feature-desc">تدرجات لونية، صور ثابتة، فيديوهات خلفية مع إمكانية التحكم بالحركة، واستيراد مباشر من يوتيوب باستخدام yt-dlp.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎤</div>
+          <h3 class="feature-title">أكثر من 30 قارئ</h3>
+          <p class="feature-desc">دعم لأشهر القراء مع إمكانية إضافة قراء جدد. الترجمة والتفسير متوفرة بلغات متعددة.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">✨</div>
+          <h3 class="feature-title">تأثيرات بصرية</h3>
+          <p class="feature-desc">فلترات لونية، زخارف إسلامية، تأثيرات متقدمة: Pixelate، Mosaic، Ripple، Wave، Swirl، Kaleidoscope، Glitch، Old Film.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔊</div>
+          <h3 class="feature-title">نظام صوتي متطور</h3>
+          <p class="feature-desc">فصل تام بين صوت المعاينة والتصدير. موجات صوتية متحركة مع 6 أشكال مختلفة.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📦</div>
+          <h3 class="feature-title">تصدير دفعات</h3>
+          <p class="feature-desc">إنشاء قائمة بمشاريع متعددة وتصديرها تباعاً. حفظ القوالب واسترجاعها لاحقاً.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== الإصدارات ===== -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">📦</span>
+        <span>الإصدارات</span>
+      </div>
+      <div class="releases-table">
+        <div class="release-row">
+          <div class="release-version">v1.1.0</div>
+          <div class="release-notes">
+            <ul>
+              <li>✅ إصلاح مشكلة مجلد الحفظ الدائم</li>
+              <li>✅ تحسين نظام كتم الصوت (فصل كتم المعاينة عن التصدير)</li>
+              <li>✅ تحسين القائمة السياقية (نسخ النصوص والروابط)</li>
+              <li>✅ إعادة ترتيب أزرار التالي/السابقة للواجهة العربية</li>
+              <li>✅ إضافة أيقونة رسمية لقسم "حول"</li>
+            </ul>
+          </div>
+          <div class="release-date">مارس 2026</div>
+        </div>
+        <div class="release-row">
+          <div class="release-version">v1.0.0</div>
+          <div class="release-notes">
+            <ul>
+              <li>🎉 الإصدار الأول</li>
+              <li>دعم ffmpeg و yt-dlp</li>
+              <li>واجهة عربية كاملة</li>
+              <li>جميع المميزات الأساسية</li>
+            </ul>
+          </div>
+          <div class="release-date">يناير 2026</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== التثبيت السريع ===== -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">🚀</span>
+        <span>البداية السريعة</span>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
+        <div class="card">
+          <h3 style="color: var(--al); margin-bottom: 16px;">AppImage</h3>
+          <div class="code-block">
+            chmod +x GT-SQRM-1.1.0.AppImage<br>
+            ./GT-SQRM-1.1.0.AppImage
+          </div>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" style="width: 100%; justify-content: center;">⬇️ تحميل AppImage</a>
+        </div>
+        <div class="card">
+          <h3 style="color: var(--al); margin-bottom: 16px;">حزمة Deb</h3>
+          <div class="code-block">
+            sudo dpkg -i GT-SQRM-1.1.0.deb<br>
+            sudo apt --fix-broken install
+          </div>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-primary" style="width: 100%; justify-content: center;">📦 تحميل Deb</a>
+        </div>
+        <div class="card">
+          <h3 style="color: var(--al); margin-bottom: 16px;">التطوير</h3>
+          <div class="code-block">
+            git clone https://github.com/SalehGNUTUX/GT-SQRM.git<br>
+            cd GT-SQRM<br>
+            npm install<br>
+            npm run dev
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== التثبيت عبر GearLever ===== -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">⚙️</span>
+        <span>دمج AppImage في قائمة البرامج</span>
+      </div>
+      <div class="card">
+        <p style="margin-bottom: 16px;">يمكنك استخدام <strong>GearLever</strong> لدمج AppImage في قائمة البرامج بسهولة:</p>
+        <div class="code-block">
+          # من Flatpak<br>
+          flatpak install flathub it.mijorus.gearlever<br><br>
+          # ثم اسحب ملف AppImage إلى نافذة GearLever
+        </div>
+        <p style="color: var(--t2); margin-top: 16px;">سيظهر التطبيق تلقائياً في قائمة البرامج مع الأيقونة الخاصة به.</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- ===== التذييل ===== -->
+<footer class="footer">
+  <div class="footer-content">
+    <div>
+      <div class="footer-logo">
+        <img src="GT-SQR-icons/all/192x192/gt-sqr-icon.png" alt="GT-SQRM">
+        <h3 style="color: var(--al);">GT-SQRM</h3>
+      </div>
+      <p style="color: var(--t2);">GnuTux Short Quran Reels Maker</p>
+      <p style="color: var(--t3); margin-top: 16px;">مفتوح المصدر بالكامل</p>
+    </div>
+    <div class="footer-links">
+      <h4>الروابط</h4>
+      <ul>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM">المستودع</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM/releases">الإصدارات</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM/issues">المشاكل</a></li>
+        <li><a href="https://github.com/SalehGNUTUX">المطور</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>المصادر</h4>
+      <ul>
+        <li><a href="https://api.alquran.cloud">AlQuran Cloud</a></li>
+        <li><a href="https://everyayah.com">EveryAyah.com</a></li>
+        <li><a href="https://ffmpeg.org">FFmpeg</a></li>
+        <li><a href="https://github.com/yt-dlp/yt-dlp">yt-dlp</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="copyright">
+    <p>© 2026 SalehGNUTUX - GNU General Public License v3.0</p>
+    <p style="margin-top: 8px;">بُني بـ ❤️ لخدمة القرآن الكريم</p>
+  </div>
+</footer>
+
+<!-- ===== JavaScript للتحكم في الوضع الفاتح/الغامق ===== -->
+<script>
+  (function() {
+    // التحقق من وجود تفضيل سابق
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    
+    // تحديث الأزرار النشطة
+    const buttons = document.querySelectorAll('.theme-btn');
+    buttons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.dataset.theme === savedTheme) {
+        btn.classList.add('active');
+      }
+    });
+
+    // إضافة مستمعي الأحداث للأزرار
+    buttons.forEach(btn => {
+      btn.addEventListener('click', function() {
+        const theme = this.dataset.theme;
+        
+        // تحديث السمة
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        // تحديث حالة الأزرار
+        buttons.forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+      });
+    });
+
+    // تحديث meta theme-color عند تغيير السمة
+    const observer = new MutationObserver(function(mutations) {
+      mutations.forEach(function(mutation) {
+        if (mutation.attributeName === 'data-theme') {
+          const theme = document.documentElement.getAttribute('data-theme');
+          const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+          if (metaThemeColor) {
+            metaThemeColor.setAttribute('content', theme === 'dark' ? '#0a5c36' : '#1a8a52');
+          }
+        }
+      });
+    });
+    
+    observer.observe(document.documentElement, { attributes: true });
+  })();
+</script>
+
+<!-- ===== إحصائيات GitHub (اختياري) ===== -->
+<script>
+  // تحديث عدد النجوم والإصدارات (يمكن إضافته لاحقاً)
+  fetch('https://api.github.com/repos/SalehGNUTUX/GT-SQRM')
+    .then(response => response.json())
+    .then(data => {
+      const stars = data.stargazers_count;
+      if (stars) {
+        const starElement = document.createElement('span');
+        starElement.className = 'badge';
+        starElement.style.marginLeft = '8px';
+        starElement.textContent = `⭐ ${stars} نجوم`;
+        document.querySelector('.header-buttons a:last-child').appendChild(starElement);
+      }
+    })
+    .catch(() => {});
+</script>
+</body>
+</html>

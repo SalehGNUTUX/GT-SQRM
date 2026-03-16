@@ -7,21 +7,19 @@
   <meta name="description" content="GT-SQRM - تطبيق سطح المكتب لإنشاء ريلز القرآن الكريم بجودة احترافية لنظام Linux">
   <meta name="theme-color" content="#0a5c36" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#1a8a52" media="(prefers-color-scheme: light)">
-  
-  <!-- أيقونات PWA و favicon - نفس مسارات التطبيق -->
-  <link rel="icon" type="image/png" sizes="16x16" href="GT-SQRM-icons/favicon/favicon-16x16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="GT-SQRM-icons/favicon/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="48x48" href="GT-SQRM-icons/favicon/favicon-48x48.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="GT-SQRM-icons/all/192x192/GT-SQRM-icon.png">
-  <link rel="shortcut icon" href="GT-SQRM-icons/gt-sqrm-icon.ico">
-  <link rel="apple-touch-icon" sizes="192x192" href="GT-SQRM-icons/all/192x192/GT-SQRM-icon.png">
-  <link rel="apple-touch-icon" sizes="512x512" href="GT-SQRM-icons/all/512x512/GT-SQRM-icon.png">
-  
+
+  <!-- أيقونات PWA و favicon - روابط GitHub المباشرة -->
+  <link rel="icon" type="image/png" sizes="48x48" href="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-icons/favicon/favicon-48x48.png?raw=true">
+  <link rel="shortcut icon" href="https://raw.githubusercontent.com/SalehGNUTUX/GT-SQRM/refs/heads/main/GT-SQRM-icons/favicon/favicon.ico">
+  <link rel="apple-touch-icon" sizes="152x152" href="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-icons/all/152x152/GT-SQRM-icon.png?raw=true">
+  <link rel="apple-touch-icon" sizes="192x192" href="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-icons/all/192x192/GT-SQRM-icon.png?raw=true">
+  <link rel="apple-touch-icon" sizes="512x512" href="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-icons/all/512x512/GT-SQRM-icon.png?raw=true">
+
   <!-- خطوط جوجل - نفس خطوط التطبيق -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Amiri+Quran&family=Reem+Kufi:wght@400;700&family=Scheherazade+New:wght@400;700&family=Cairo:wght@300;400;600;700;900&family=Noto+Naskh+Arabic:wght@400;700&family=Lateef:wght@400;700&family=Harmattan:wght@400;700&family=Markazi+Text:wght@400;700&family=Aref+Ruqaa&display=swap" rel="stylesheet">
-  
+
   <style>
     /* ===== متغيرات الألوان - مطابقة تماماً للتطبيق ===== */
     :root {
@@ -131,12 +129,12 @@
       color: var(--a);
     }
 
-    /* ===== شريط التبديل بين الوضعين ===== */
+    /* ===== شريط التبديل بين الوضعين - يبقى على اليمين ===== */
     .theme-toggle {
       position: fixed;
-      top: 20px;
-      left: 20px;
-      z-index: 1000;
+      top: 30px;
+      right: 30px;
+      z-index: 1001;
       background: var(--card-bg);
       border: var(--border-light);
       border-radius: 30px;
@@ -144,6 +142,7 @@
       display: flex;
       gap: 5px;
       box-shadow: var(--shadow);
+      backdrop-filter: blur(5px);
     }
     .theme-btn {
       background: transparent;
@@ -166,12 +165,12 @@
       background: var(--bg4);
     }
 
-    /* ===== الهيدر - مطابق للتطبيق ===== */
+    /* ===== الهيدر - تصميم جديد مع شعار في الوسط ===== */
     .header {
       background: var(--header-bg);
       border-bottom: var(--border-light);
-      padding: 0 24px;
-      height: 90px;
+      padding: 0 30px;
+      height: 100px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -180,10 +179,22 @@
       top: 0;
       z-index: 100;
     }
+
+    /* المساحة الفارغة على اليسار (لتوازن التصميم) */
+    .header-left {
+      width: 200px; /* نفس عرض الأزرار على اليمين */
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    /* الشعار في الوسط */
     .logo {
       display: flex;
       align-items: center;
       gap: 16px;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
     }
     .logo-icon {
       width: 70px;
@@ -195,6 +206,16 @@
       justify-content: center;
       background: linear-gradient(135deg, var(--pd), var(--p), var(--a));
       box-shadow: 0 2px 14px rgba(201, 162, 39, 0.4);
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s, filter 0.3s;
+    }
+    .logo-icon:hover {
+      transform: rotate(12deg) scale(1.18);
+      box-shadow: 0 4px 20px rgba(201, 162, 39, 0.7);
+      filter: brightness(1.15);
+    }
+    .logo-icon:active {
+      transform: rotate(-8deg) scale(0.88);
+      transition: transform 0.1s;
     }
     .logo-icon img {
       width: 100%;
@@ -217,12 +238,17 @@
       direction: ltr;
       letter-spacing: 0.7px;
     }
-    .header-buttons {
+
+    /* أزرار التنزيل على اليسار */
+    .header-right {
+      width: 200px;
       display: flex;
       gap: 12px;
+      justify-content: flex-end;
     }
+
     .btn {
-      padding: 8px 20px;
+      padding: 8px 16px;
       border: none;
       border-radius: var(--r);
       cursor: pointer;
@@ -234,6 +260,7 @@
       align-items: center;
       gap: 8px;
       text-decoration: none;
+      white-space: nowrap;
     }
     .btn-primary {
       background: linear-gradient(135deg, var(--pd), var(--pl));
@@ -458,6 +485,11 @@
       width: 40px;
       height: 40px;
       border-radius: 8px;
+      transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+    }
+    .footer-logo img:hover {
+      transform: rotate(12deg) scale(1.18);
+      box-shadow: 0 4px 20px rgba(201, 162, 39, 0.4);
     }
     .footer-links h4 {
       color: var(--al);
@@ -482,55 +514,100 @@
       font-size: 14px;
     }
 
-    /* ===== الوسائط المتجاوبة ===== */
+    /* ===== روابط التحميل المباشرة ===== */
+    .download-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 20px;
+      background: var(--card-bg);
+      border: var(--border-light);
+      border-radius: var(--r);
+      color: var(--text-primary);
+      transition: var(--tr);
+    }
+    .download-link:hover {
+      border-color: var(--pl);
+      transform: translateY(-2px);
+    }
+
+    /* ===== تحسينات للأجهزة الصغيرة ===== */
+    @media (max-width: 900px) {
+      .logo-text h1 {
+        font-size: 18px;
+      }
+      .logo-text .subtitle {
+        font-size: 10px;
+      }
+      .btn {
+        padding: 6px 12px;
+        font-size: 12px;
+      }
+    }
+
     @media (max-width: 768px) {
       .header {
-        flex-direction: column;
         height: auto;
-        padding: 16px;
+        padding: 15px;
+        flex-direction: column;
+        gap: 15px;
       }
+
       .logo {
-        margin-bottom: 16px;
+        position: static;
+        transform: none;
+        margin: 10px 0;
       }
-      .header-buttons {
+
+      .header-left, .header-right {
         width: 100%;
         justify-content: center;
       }
+
+      .header-right {
+        justify-content: center;
+      }
+
+      .theme-toggle {
+        top: 10px;
+        right: 10px;
+      }
+
       .release-row {
         grid-template-columns: 1fr;
         gap: 8px;
-      }
-      .theme-toggle {
-        top: auto;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
       }
     }
   </style>
 </head>
 <body>
 
-<!-- ===== زر تبديل الوضع الفاتح/الغامق ===== -->
+<!-- ===== زر تبديل الوضع الفاتح/الغامق - يبقى على اليمين ===== -->
 <div class="theme-toggle">
   <button class="theme-btn active" data-theme="dark">🌙 غامق</button>
   <button class="theme-btn" data-theme="light">☀️ فاتح</button>
 </div>
 
-<!-- ===== الهيدر - مطابق للتطبيق تماماً ===== -->
+<!-- ===== الهيدر بتصميم جديد - شعار في الوسط ===== -->
 <header class="header">
+  <!-- مساحة فارغة على اليسار للتوازن -->
+  <div class="header-left"></div>
+
+  <!-- الشعار في الوسط تماماً -->
   <div class="logo">
-    <div class="logo-icon">
-      <img src="GT-SQRM-icons/all/512x512/gt-sqr-icon.png" alt="GT-SQRM">
+    <div class="logo-icon" id="logo-icon">
+      <img src="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-icons/all/512x512/GT-SQRM-icon.png?raw=true" alt="GT-SQRM">
     </div>
     <div class="logo-text">
       <h1>GT-SQRM</h1>
       <div class="subtitle">GnuTux Short Quran Reels Maker</div>
     </div>
   </div>
-  <div class="header-buttons">
-    <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/latest" class="btn btn-primary">📥 تحميل v1.1.0</a>
-    <a href="https://github.com/SalehGNUTUX/GT-SQRM" class="btn btn-secondary">⭐ GitHub</a>
+
+  <!-- أزرار التنزيل على اليسار -->
+  <div class="header-right">
+    <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" download>📥 AppImage</a>
+    <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-secondary" download>📦 Deb</a>
   </div>
 </header>
 
@@ -545,8 +622,9 @@
           <span style="font-size: 16px;">حصرياً لنظام GNU/Linux</span>
         </p>
         <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" style="padding: 12px 30px;">⬇️ تحميل AppImage</a>
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-secondary" style="padding: 12px 30px;">📦 تحميل Deb</a>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" style="padding: 12px 30px;" download>⬇️ تحميل AppImage</a>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-secondary" style="padding: 12px 30px;" download>📦 تحميل Deb</a>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM" class="btn btn-outline" style="padding: 12px 30px;">⭐ GitHub</a>
         </div>
       </div>
     </div>
@@ -680,7 +758,7 @@
             chmod +x GT-SQRM-1.1.0.AppImage<br>
             ./GT-SQRM-1.1.0.AppImage
           </div>
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" style="width: 100%; justify-content: center;">⬇️ تحميل AppImage</a>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.AppImage" class="download-link" style="width: 100%; justify-content: center;" download>⬇️ تحميل AppImage (ملف مباشر)</a>
         </div>
         <div class="card">
           <h3 style="color: var(--al); margin-bottom: 16px;">حزمة Deb</h3>
@@ -688,7 +766,7 @@
             sudo dpkg -i GT-SQRM-1.1.0.deb<br>
             sudo apt --fix-broken install
           </div>
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-primary" style="width: 100%; justify-content: center;">📦 تحميل Deb</a>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.deb" class="download-link" style="width: 100%; justify-content: center;" download>📦 تحميل Deb (ملف مباشر)</a>
         </div>
         <div class="card">
           <h3 style="color: var(--al); margin-bottom: 16px;">التطوير</h3>
@@ -726,7 +804,7 @@
   <div class="footer-content">
     <div>
       <div class="footer-logo">
-        <img src="GT-SQRM-icons/all/192x192/gt-sqr-icon.png" alt="GT-SQRM">
+        <img src="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-icons/all/192x192/GT-SQRM-icon.png?raw=true" alt="GT-SQRM">
         <h3 style="color: var(--al);">GT-SQRM</h3>
       </div>
       <p style="color: var(--t2);">GnuTux Short Quran Reels Maker</p>
@@ -763,7 +841,7 @@
     // التحقق من وجود تفضيل سابق
     const savedTheme = localStorage.getItem('theme') || 'dark';
     document.documentElement.setAttribute('data-theme', savedTheme);
-    
+
     // تحديث الأزرار النشطة
     const buttons = document.querySelectorAll('.theme-btn');
     buttons.forEach(btn => {
@@ -777,11 +855,11 @@
     buttons.forEach(btn => {
       btn.addEventListener('click', function() {
         const theme = this.dataset.theme;
-        
+
         // تحديث السمة
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
-        
+
         // تحديث حالة الأزرار
         buttons.forEach(b => b.classList.remove('active'));
         this.classList.add('active');
@@ -800,14 +878,32 @@
         }
       });
     });
-    
+
     observer.observe(document.documentElement, { attributes: true });
+
+    // إضافة حركة للأيقونة عند التمرير
+    const logoIcon = document.getElementById('logo-icon');
+    if (logoIcon) {
+      let lastScroll = 0;
+      window.addEventListener('scroll', () => {
+        const currentScroll = window.pageYOffset;
+        if (currentScroll > lastScroll + 50) {
+          logoIcon.style.transform = 'rotate(5deg) scale(0.95)';
+          lastScroll = currentScroll;
+        } else if (currentScroll < lastScroll - 50) {
+          logoIcon.style.transform = 'rotate(-5deg) scale(1.05)';
+          lastScroll = currentScroll;
+        }
+        setTimeout(() => {
+          logoIcon.style.transform = '';
+        }, 200);
+      });
+    }
   })();
 </script>
 
-<!-- ===== إحصائيات GitHub (اختياري) ===== -->
+<!-- ===== إحصائيات GitHub ===== -->
 <script>
-  // تحديث عدد النجوم والإصدارات (يمكن إضافته لاحقاً)
   fetch('https://api.github.com/repos/SalehGNUTUX/GT-SQRM')
     .then(response => response.json())
     .then(data => {
@@ -815,9 +911,9 @@
       if (stars) {
         const starElement = document.createElement('span');
         starElement.className = 'badge';
-        starElement.style.marginLeft = '8px';
+        starElement.style.marginRight = '8px';
         starElement.textContent = `⭐ ${stars} نجوم`;
-        document.querySelector('.header-buttons a:last-child').appendChild(starElement);
+        document.querySelector('.header-right a:last-child').appendChild(starElement);
       }
     })
     .catch(() => {});

@@ -56,11 +56,16 @@ const AUDIO_BASE = "https://everyayah.com/data";
 
 // ── GLOBAL STATE ───────────────────────────────────────
 const S = {
-  surahs: [], verses: [], translations: [],
+  surahs: [], filteredSurahs: [], verses: [], translations: [],
   currentAya: 0, playing: false,
   elapsed: 0, lastRafTs: null,
   ayaDurations: [],
-  bgImg: null, bgVid: null,
+  bgImg: null, bgVid: null, bgVidFile: null,
+  bgVidItems: [], // [{file, vid, name, dur}] — playlist لخلفية الفيديو
+  mixedAnimsOrder: [],  // ترتيب التأثيرات المُفعَّلة في وضع "مختلط"
+  bgVidActiveIdx: 0,
+  bgVidNext: null,         // الفيديو القادم للـ crossfade
+  bgVidFadeProgress: 0,    // 0→1 خلال 500ms قبل انتهاء الحالي
   bgMotionT: 0,
   audioCtx: null, analyser: null, exportDest: null,
   recAudioEl: null, recAudioSource: null, recGainNode: null, recExportGain: null,
@@ -70,6 +75,8 @@ const S = {
   stars: [], bokeh: [],
   exportCancel: false, mediaRecorder: null, exportChunks: [],
   exporting: false, exportSources: [],
+  exportCancelRef: null,         // مرجع للإلغاء في محرّك V2
+  _exportBgFrameImg: null,       // إطار خلفية مستخرَج مسبقاً للإطار الحالي (V2)
   templates: [], reciters: [...RECITERS_LIST],
   allFonts: [...BUILT_IN_FONTS],
   rafId: null,
@@ -103,8 +110,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   startRenderLoop();
   await loadLocalFonts(false);
   await loadSurahList();
-  restoreAllSettings();
-  initAutoSave();
 
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) {
     navigator.serviceWorker.register("sw.js")
@@ -127,6 +132,18 @@ document.addEventListener("DOMContentLoaded", async () => {
   initMobileLayout();
   initPwaInstall();
   initEventListeners();
+
+  // ⚠️ الترتيب مهم: نستعيد الإعدادات بعد تسجيل المستمعين فقط
+  //   حتى تصل أحداث change/input إلى onBgTypeChange/onFmtChange/إلخ
+  //   فتنعكس قيم الراديو على ظهور/إخفاء اللوحات الفرعية في الواجهة
+  restoreAllSettings();
+  restoreLogo();
+  restoreMixedAnimsOrder();
+  initAutoSave();
+
+  // تحميل فهرس القرآن الكامل في الخلفية للعمل دون اتصال
+  //   لا يُعطّل بدء التطبيق — إن نجح: الـ verses تأتي من المحلي بدلاً من الـ API
+  preloadQuranIndex();
 
   if (IS_DESKTOP) {
     initDesktopFeatures();
@@ -230,6 +247,28 @@ function initEventListeners() {
   if (bgVidInput) bgVidInput.addEventListener("change", (e) => onBgMedia(e.target, "video"));
   const bgAudioInput = $("bg-audio-input");
   if (bgAudioInput) bgAudioInput.addEventListener("change", (e) => onBgAudio(e.target));
+
+  // تقطيع زمني للوسائط المحلية
+  const bgVidTrimOn = $("bg-vid-trim-on");
+  if (bgVidTrimOn) bgVidTrimOn.addEventListener("change", (e) => {
+    const row = $("bg-vid-trim-row");
+    if (row) row.style.display = e.target.checked ? "block" : "none";
+    if (e.target.checked && S.bgVid) applyBgVidTrim();
+  });
+  ["bg-vid-trim-start","bg-vid-trim-end"].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener("input", () => { if (ge("bg-vid-trim-on")) applyBgVidTrim(); });
+  });
+  const bgAudioTrimOn = $("bg-audio-trim-on");
+  if (bgAudioTrimOn) bgAudioTrimOn.addEventListener("change", (e) => {
+    const row = $("bg-audio-trim-row");
+    if (row) row.style.display = e.target.checked ? "block" : "none";
+    if (e.target.checked && S.bgAudioEl) applyBgAudioTrim();
+  });
+  ["bg-audio-trim-start","bg-audio-trim-end"].forEach(id => {
+    const el = $(id);
+    if (el) el.addEventListener("input", () => { if (ge("bg-audio-trim-on")) applyBgAudioTrim(); });
+  });
   const logoUpload = $("logo-upload");
   if (logoUpload) logoUpload.addEventListener("change", (e) => onLogoUpload(e.target));
   const removeLogoBtn = $("remove-logo-btn");
@@ -242,8 +281,44 @@ function initEventListeners() {
   document.querySelectorAll('input[name="bgt"]').forEach(radio => {
     radio.addEventListener("change", onBgTypeChange);
   });
+  document.querySelectorAll('input[name="tanim"]').forEach(radio => {
+    radio.addEventListener("change", onTanimChange);
+  });
+  // checkboxes داخل وضع "مختلط"
+  document.querySelectorAll(".mix-anim").forEach(cb => {
+    cb.addEventListener("change", onMixAnimChange);
+  });
+  // قالب جاهز
+  const presetSel = $("preset-sel");
+  if (presetSel) presetSel.addEventListener("change", onPresetChange);
+
+  // إظهار/إخفاء لوحة إعدادات اسم السورة
+  const snameOn = $("sname-on");
+  if (snameOn) snameOn.addEventListener("change", (e) => {
+    const ctrl = $("sname-ctrl");
+    if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
+  });
   const surahSel = $("surah-sel");
   if (surahSel) surahSel.addEventListener("change", onSurahChange);
+
+  // بحث السورة بالاسم (تطبيع عربي)
+  const surahSearch = $("surah-search");
+  if (surahSearch) {
+    const debouncedFilter = debounce((e) => filterSurahs(e.target.value), 120);
+    surahSearch.addEventListener("input", debouncedFilter);
+  }
+
+  // بحث الآيات (مع تطبيع التشكيل)
+  const verseSearchInp = $("verse-search-inp");
+  if (verseSearchInp) {
+    const debouncedSearch = debounce(onVerseSearchInput, 200);
+    verseSearchInp.addEventListener("input", debouncedSearch);
+    verseSearchInp.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { clearVerseSearch(); verseSearchInp.blur(); }
+    });
+  }
+  const verseSearchClear = $("verse-search-clear-btn");
+  if (verseSearchClear) verseSearchClear.addEventListener("click", clearVerseSearch);
   const transSel = $("trans-sel");
   if (transSel) transSel.addEventListener("change", onTransChange);
   const autoDur = $("auto-dur");
@@ -253,6 +328,10 @@ function initEventListeners() {
   const sliders = [
     { id: "aya-dur", outId: "aya-dur-v", unit: "s" },
     { id: "trans-dur", outId: "trans-dur-v", unit: "s" },
+    { id: "aya-gap", outId: "aya-gap-v", unit: "s" },
+    { id: "wave-gain", outId: "wave-gain-v", unit: "%" },
+    { id: "sname-y", outId: "sname-y-v", unit: "%" },
+    { id: "sname-size", outId: "sname-size-v", unit: "%" },
     { id: "orn-op", outId: "orn-op-v", unit: "%" },
     { id: "dim", outId: "dim-v", unit: "%" },
     { id: "bright", outId: "bright-v", unit: "%" },
@@ -276,6 +355,8 @@ function initEventListeners() {
     { id: "swirl-factor", outId: "swirl-factor-v", unit: "" },
     { id: "kaleido-segments", outId: "kaleido-segments-v", unit: "" },
     { id: "glitch-intensity", outId: "glitch-intensity-v", unit: "" },
+    { id: "word-fade-ms", outId: "word-fade-ms-v", unit: "ms" },
+    { id: "bg-crossfade-ms", outId: "bg-crossfade-ms-v", unit: "ms" },
   ];
   sliders.forEach(s => {
     const el = $(s.id);
@@ -457,6 +538,8 @@ function startRenderLoop() {
     S.rafId = requestAnimationFrame(loop);
     const dt = S.lastRafTs ? Math.min((ts - S.lastRafTs) / 1000, .1) : 0;
     S.lastRafTs = ts;
+    // أثناء التصدير الحتمي V2: محرّك التصدير يتولّى الرسم بنفسه — لا نتدخّل
+    if (S.exporting && S.exportCancelRef) return;
     if (S.playing) {
       S.elapsed += dt;
       S.bgMotionT += dt;
@@ -468,9 +551,19 @@ function startRenderLoop() {
   S.rafId = requestAnimationFrame(loop);
 }
 
+// ── فاصل صمت بين الآيات (نفس الواجهة في النسختين) ──
+function getAyaGap() {
+  return Math.max(0, parseFloat(gv("aya-gap")) || 0);
+}
+// مدة فعلية لكل "خانة" آية = مدة الصوت + الفاصل
+function getEffectiveDur(i) {
+  const audioDur = (S.ayaDurations[i] && S.ayaDurations[i] > 0.5) ? S.ayaDurations[i] : (parseFloat(gv("aya-dur")) || 6);
+  return audioDur + getAyaGap();
+}
+
 function checkAyaAdvance() {
   if (S.exporting) return;
-  const dur = S.ayaDurations[S.currentAya] || parseFloat(gv("aya-dur")) || 6;
+  const dur = getEffectiveDur(S.currentAya);
   if (S.elapsed >= dur) {
     if (S.currentAya < S.verses.length - 1) {
       S.currentAya++;
@@ -490,14 +583,70 @@ function checkAyaAdvance() {
 // ══════════════════════════════════════════════════════
 function initCanvas() { onFmtChange(); }
 
+// أبعاد افتراضية لكل نسبة عرض — يتبع آخر تطبيق preset إن وُجد
+const FMT_SIZES = {
+  "9:16": { w: 720,  h: 1280 },
+  "16:9": { w: 1280, h: 720  },
+  "1:1":  { w: 1080, h: 1080 },
+  "4:5":  { w: 1080, h: 1350 },
+};
+
 function onFmtChange() {
   const fmt = radioVal("fmt");
   const cv = $("cv");
-  const sizes = { "9:16": { w: 720, h: 1280 }, "16:9": { w: 1280, h: 720 }, "1:1": { w: 1080, h: 1080 } };
-  const sz = sizes[fmt] || sizes["9:16"];
+  const sz = FMT_SIZES[fmt] || FMT_SIZES["9:16"];
   cv.width = sz.w; cv.height = sz.h;
-  $("fmt-lbl").textContent = fmt;
+  const lblEl = $("fmt-lbl");
+  if (lblEl) lblEl.textContent = fmt;
   fitCanvas();
+}
+
+// ── القوالب الجاهزة للمنصات الشهيرة ──────────────────
+const PRESETS = {
+  "reel-fhd":  { fmt: "9:16", w: 1080, h: 1920, fps: 30, vbr: 10, crf: 20, label: "Reels/Shorts/TikTok 1080×1920" },
+  "reel-hd":   { fmt: "9:16", w: 720,  h: 1280, fps: 30, vbr: 6,  crf: 22, label: "Reels 720×1280 (سريع)" },
+  "yt-fhd":    { fmt: "16:9", w: 1920, h: 1080, fps: 30, vbr: 12, crf: 20, label: "YouTube 1920×1080" },
+  "yt-hd":     { fmt: "16:9", w: 1280, h: 720,  fps: 30, vbr: 8,  crf: 22, label: "YouTube 1280×720" },
+  "ig-sq":     { fmt: "1:1",  w: 1080, h: 1080, fps: 30, vbr: 8,  crf: 20, label: "Instagram Square 1080" },
+  "ig-port":   { fmt: "4:5",  w: 1080, h: 1350, fps: 30, vbr: 8,  crf: 20, label: "Instagram Portrait 1080×1350" },
+  "cinema":    { fmt: "16:9", w: 2560, h: 1080, fps: 30, vbr: 15, crf: 19, label: "Cinema 2560×1080 (21:9)" },
+};
+
+function applyPreset(name) {
+  const p = PRESETS[name];
+  if (!p) return;
+
+  // 1) ثبّت أبعاد نسبة العرض في الخريطة (حتى عند تبديل fmt لاحقاً)
+  FMT_SIZES[p.fmt] = { w: p.w, h: p.h };
+
+  // 2) اختر الراديو المناسب
+  const fmtRadio = document.querySelector(`input[name="fmt"][value="${p.fmt}"]`);
+  if (fmtRadio) fmtRadio.checked = true;
+
+  // 3) طبّق على canvas
+  const cv = $("cv");
+  cv.width = p.w; cv.height = p.h;
+  const lbl = $("fmt-lbl");
+  if (lbl) lbl.textContent = p.fmt;
+  fitCanvas();
+
+  // 4) FPS + جودة
+  const fpsEl = $("export-fps");
+  if (fpsEl) fpsEl.value = String(p.fps);
+  const vbrEl = $("export-vbr");
+  if (vbrEl) { vbrEl.value = String(p.vbr); if (typeof sv === "function") sv(vbrEl, "export-vbr-v", " Mbps"); }
+  const crfEl = $("export-crf");
+  if (crfEl) { crfEl.value = String(p.crf); if (typeof sv === "function") sv(crfEl, "export-crf-v", ""); }
+
+  toast(`✅ تم تطبيق قالب: ${p.label}`, "success", 3000);
+}
+
+function onPresetChange(e) {
+  const v = e.target.value;
+  if (!v) return;
+  applyPreset(v);
+  // أعد الاختيار إلى "اختر قالباً" حتى يتاح إعادة التطبيق بنفس القيمة
+  setTimeout(() => { e.target.value = ""; }, 100);
 }
 
 function fitCanvas() {
@@ -541,6 +690,7 @@ function drawFrame(ts) {
   if (ge("fx-glitch")) applyGlitch(ctx, W, H);
   if (ge("fx-oldfilm")) applyOldFilm(ctx, W, H, ts);
   if (S.verses.length) drawVerse(ctx, W, H, ts);
+  drawSurahName(ctx, W, H);
   drawWave(ctx, W, H, ts);
   drawLogo(ctx, W, H);
   drawWatermark(ctx, W, H);
@@ -567,11 +717,23 @@ function drawBg(ctx, W, H, ts) {
     applyBgMotion(ctx, W, H, bgm, ts);
     imgCover(ctx, S.bgImg, 0, 0, W, H);
     ctx.restore();
-  } else if (bgt === "video" && S.bgVid) {
-    if (S.bgVid.readyState >= 2) {
+  } else if (bgt === "video" && (S._exportBgFrameImg || S.bgVid)) {
+    const src = S._exportBgFrameImg || S.bgVid;
+    const ready = (src instanceof HTMLVideoElement) ? src.readyState >= 2 : !!src;
+    if (ready) {
+      // ── Crossfade بين مقطعَين عند الانتقال (المعاينة فقط) ──
+      updateBgVidCrossfade();
+      const alpha = S.bgVidFadeProgress;
       ctx.save();
       applyBgMotion(ctx, W, H, bgm, ts);
-      imgCover(ctx, S.bgVid, 0, 0, W, H);
+      // ارسم الحالي بشفافية متناقصة
+      ctx.globalAlpha = 1 - alpha;
+      imgCover(ctx, src, 0, 0, W, H);
+      // ارسم القادم فوقه بشفافية متزايدة (إن كان يتم الـ crossfade)
+      if (S.bgVidNext && S.bgVidNext.readyState >= 2 && alpha > 0) {
+        ctx.globalAlpha = alpha;
+        imgCover(ctx, S.bgVidNext, 0, 0, W, H);
+      }
       ctx.restore();
     } else {
       drawGradient(ctx, W, H);
@@ -606,8 +768,10 @@ function applyBgMotion(ctx, W, H, bgm, ts) {
 }
 
 function imgCover(ctx, src, x, y, w, h) {
-  const sw = src.naturalWidth || src.videoWidth || w;
-  const sh = src.naturalHeight || src.videoHeight || h;
+  // ImageBitmap يكشف عن width/height، بينما HTMLImageElement يستخدم naturalWidth،
+  // و HTMLVideoElement يستخدم videoWidth
+  const sw = src.naturalWidth || src.videoWidth || src.width || w;
+  const sh = src.naturalHeight || src.videoHeight || src.height || h;
   if (!sw || !sh) return;
   const ir = sw / sh, cr = w / h;
   let dw, dh, dx, dy;
@@ -624,10 +788,77 @@ function applyColorFilter(ctx, W, H) {
   if (cf === "none") return;
   const id = ctx.getImageData(0, 0, W, H);
   const d = id.data;
-  for (let i = 0; i < d.length; i += 4) {
-    if (cf === "bw") { const g = d[i] * .3 + d[i + 1] * .59 + d[i + 2] * .11; d[i] = d[i + 1] = d[i + 2] = g; }
-    if (cf === "warm") { d[i] = Math.min(255, d[i] * 1.12); d[i + 2] = Math.max(0, d[i + 2] * .88); }
-    if (cf === "cold") { d[i] = Math.max(0, d[i] * .88); d[i + 2] = Math.min(255, d[i + 2] * 1.12); }
+  const len = d.length;
+  switch (cf) {
+    case "bw":
+      for (let i = 0; i < len; i += 4) {
+        const g = d[i] * .3 + d[i+1] * .59 + d[i+2] * .11;
+        d[i] = d[i+1] = d[i+2] = g;
+      }
+      break;
+    case "warm":
+      for (let i = 0; i < len; i += 4) {
+        d[i]   = Math.min(255, d[i] * 1.12);
+        d[i+2] = Math.max(0,   d[i+2] * .88);
+      }
+      break;
+    case "cold":
+      for (let i = 0; i < len; i += 4) {
+        d[i]   = Math.max(0,   d[i] * .88);
+        d[i+2] = Math.min(255, d[i+2] * 1.12);
+      }
+      break;
+    case "sepia":
+      for (let i = 0; i < len; i += 4) {
+        const r = d[i], g = d[i+1], b = d[i+2];
+        d[i]   = Math.min(255, r * .393 + g * .769 + b * .189);
+        d[i+1] = Math.min(255, r * .349 + g * .686 + b * .168);
+        d[i+2] = Math.min(255, r * .272 + g * .534 + b * .131);
+      }
+      break;
+    case "negative":
+      for (let i = 0; i < len; i += 4) {
+        d[i]   = 255 - d[i];
+        d[i+1] = 255 - d[i+1];
+        d[i+2] = 255 - d[i+2];
+      }
+      break;
+    case "saturated":
+      // زيادة التشبع بنسبة ~50%
+      for (let i = 0; i < len; i += 4) {
+        const r = d[i], g = d[i+1], b = d[i+2];
+        const gray = r * .3 + g * .59 + b * .11;
+        d[i]   = Math.min(255, Math.max(0, gray + (r - gray) * 1.6));
+        d[i+1] = Math.min(255, Math.max(0, gray + (g - gray) * 1.6));
+        d[i+2] = Math.min(255, Math.max(0, gray + (b - gray) * 1.6));
+      }
+      break;
+    case "faded":
+      // إقلال التشبع + زيادة طفيفة في السطوع
+      for (let i = 0; i < len; i += 4) {
+        const r = d[i], g = d[i+1], b = d[i+2];
+        const gray = r * .3 + g * .59 + b * .11;
+        d[i]   = Math.min(255, gray + (r - gray) * 0.4 + 20);
+        d[i+1] = Math.min(255, gray + (g - gray) * 0.4 + 20);
+        d[i+2] = Math.min(255, gray + (b - gray) * 0.4 + 20);
+      }
+      break;
+    case "dreamy":
+      // pastel ناعم: dampened saturation + lift في الـ shadows
+      for (let i = 0; i < len; i += 4) {
+        d[i]   = Math.min(255, d[i]   * 0.85 + 38);
+        d[i+1] = Math.min(255, d[i+1] * 0.85 + 38);
+        d[i+2] = Math.min(255, d[i+2] * 0.85 + 50);  // مسحة أزرق دافئ
+      }
+      break;
+    case "night":
+      // داكن مزرق (سينمائي ليلي)
+      for (let i = 0; i < len; i += 4) {
+        d[i]   = Math.max(0, d[i]   * 0.55);
+        d[i+1] = Math.max(0, d[i+1] * 0.65);
+        d[i+2] = Math.min(255, d[i+2] * 0.85 + 25);
+      }
+      break;
   }
   ctx.putImageData(id, 0, 0);
 }
@@ -767,7 +998,10 @@ function drawVignette(ctx, W, H) {
 
 function drawGoldBorder(ctx, W, H, ts) {
   const pulse = .5 + .5 * Math.sin(ts * 1.5);
-  const [r, g, b] = hex2rgb($("orn-col").value);
+  // اللون مستقل عن لون الزخرفة — يفضّل gold-col الجديد ويسقط على orn-col للتوافق القديم
+  const goldEl = $("gold-col");
+  const colorHex = (goldEl && goldEl.value) || $("orn-col").value || "#f0c842";
+  const [r, g, b] = hex2rgb(colorHex);
   ctx.save();
   ctx.shadowColor = `rgba(${r},${g},${b},${.5 + pulse * .3})`; ctx.shadowBlur = 20 + pulse * 10;
   ctx.strokeStyle = `rgba(${r},${g},${b},.85)`; ctx.lineWidth = 2;
@@ -1014,6 +1248,8 @@ function applyOldFilm(ctx, W, H, ts) {
 // ══════════════════════════════════════════════════════
 //  LOGO
 // ══════════════════════════════════════════════════════
+const LOGO_PERSIST_KEY = "gt_sqrm_logo_v1";
+
 function onLogoUpload(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1038,7 +1274,9 @@ function onLogoUpload(input) {
       $("logo-vid-preview").src = url;
       $("logo-vid-preview").style.display = "block";
       $("logo-img-preview").style.display = "none";
-      toast("✅ شعار فيديو MOV تم تحميله", "success");
+      toast("✅ شعار فيديو تم تحميله (الفيديو لا يُحفظ تلقائياً بين المشاريع — حجمه كبير)", "info", 5000);
+      // فيديوهات الشعار أكبر من سعة localStorage فلا تُحفظ. ننظّف أي حفظ سابق.
+      try { localStorage.removeItem(LOGO_PERSIST_KEY); } catch (_) {}
     };
     vid.onerror = () => toast("❌ فشل تحميل الفيديو", "error");
     vid.load();
@@ -1050,10 +1288,23 @@ function onLogoUpload(input) {
       $("logo-img-preview").src = url;
       $("logo-img-preview").style.display = "block";
       $("logo-vid-preview").style.display = "none";
-      toast("✅ تم تحميل الشعار", "success");
+      toast("✅ تم تحميل الشعار — سيُحفظ تلقائياً للمشاريع القادمة", "success");
     };
     img.onerror = () => toast("❌ فشل تحميل الصورة", "error");
     img.src = url;
+
+    // اقرأ الملف كـ dataURL واحفظه في localStorage للاستعادة بين الجلسات
+    // (نتسامح مع QuotaExceeded — الشعار في الذاكرة يبقى فعّالاً للجلسة الحالية)
+    const fr = new FileReader();
+    fr.onload = () => {
+      try {
+        localStorage.setItem(LOGO_PERSIST_KEY, fr.result);
+      } catch (e) {
+        console.warn("Logo too large for localStorage — won't persist:", e);
+        toast("⚠️ الشعار يعمل في هذه الجلسة لكن حجمه أكبر من سعة الحفظ — لن يُستعاد لاحقاً", "info", 4000);
+      }
+    };
+    fr.readAsDataURL(file);
   }
 }
 
@@ -1062,7 +1313,26 @@ function removeLogo() {
   S.logoImg = null;
   $("logo-preview").style.display = "none";
   $("logo-upload").value = "";
+  try { localStorage.removeItem(LOGO_PERSIST_KEY); } catch (_) {}
   toast("🗑️ تمت إزالة الشعار", "info");
+}
+
+function restoreLogo() {
+  let dataUrl = null;
+  try { dataUrl = localStorage.getItem(LOGO_PERSIST_KEY); } catch (_) {}
+  if (!dataUrl) return;
+  const img = new Image();
+  img.onload = () => {
+    S.logoImg = img;
+    const prevEl = $("logo-preview");
+    const imgPrev = $("logo-img-preview");
+    const vidPrev = $("logo-vid-preview");
+    if (prevEl) prevEl.style.display = "block";
+    if (imgPrev) { imgPrev.src = dataUrl; imgPrev.style.display = "block"; }
+    if (vidPrev) vidPrev.style.display = "none";
+  };
+  img.onerror = () => { try { localStorage.removeItem(LOGO_PERSIST_KEY); } catch (_) {} };
+  img.src = dataUrl;
 }
 
 function drawLogo(ctx, W, H) {
@@ -1103,6 +1373,38 @@ function drawLogo(ctx, W, H) {
 // ══════════════════════════════════════════════════════
 //  VERSE RENDERING
 // ══════════════════════════════════════════════════════
+// ── رسم اسم السورة في أعلى المقطع ─────────────────
+function drawSurahName(ctx, W, H) {
+  if (!ge("sname-on")) return;
+  if (!S.surahs || !S.surahs.length) return;
+  const surahNum = parseInt($("surah-sel")?.value) || 1;
+  const surah = S.surahs.find(s => s.number === surahNum);
+  if (!surah) return;
+
+  const prefix = $("sname-prefix")?.value || "surah";
+  const rawName = surah.name || "";
+  const cleanName = rawName.replace(/^\s*(?:سُورَةُ|سُورَة|سُورة|سورة)\s+/u, "");
+  const label = prefix === "surah" ? `سُورَةُ ${cleanName}`
+              : prefix === "hizb"  ? `حِزْبُ ${cleanName}`
+              :                       cleanName;
+
+  const font = fontVal();
+  const fsz = W * 0.05 * ((parseFloat(gv("sname-size")) || 80) / 100);
+  const yPct = parseFloat(gv("sname-y")) || 5;
+  const y = (yPct / 100) * H + fsz;
+  const col = $("sname-col")?.value || "#f0c842";
+
+  ctx.save();
+  ctx.font = `bold ${fsz}px ${font}`;
+  ctx.fillStyle = col;
+  ctx.textAlign = "center";
+  ctx.direction = "rtl";
+  ctx.shadowColor = "rgba(0,0,0,.7)";
+  ctx.shadowBlur = 10;
+  ctx.fillText(label, W / 2, y);
+  ctx.restore();
+}
+
 function drawVerse(ctx, W, H, ts) {
   const aya = S.verses[S.currentAya]; if (!aya) return;
   const font = fontVal();
@@ -1112,20 +1414,103 @@ function drawVerse(ctx, W, H, ts) {
   const lh = parseFloat(gv("lh"));
   const tpos = radioVal("tpos");
   const textEff = radioVal("te");
-  const animType = radioVal("tanim");
+  let animType = radioVal("tanim");
+  // في وضع "مختلط": اختر التأثير الفعلي للآية الحالية بترتيب الاختيار
+  if (animType === "mix") animType = getMixedAnimForCurrentAya();
+  const dur = S.ayaDurations[S.currentAya] || 6;
 
+  // ── حساب alpha + transform حسب نوع الـ animation ──
   let alpha = 1;
-  if (animType !== "none") {
-    const dur = S.ayaDurations[S.currentAya] || 6;
-    const w = (S.elapsed % dur) / dur;
-    if (w < .1) alpha = w / .1;
-    else if (w > .88) alpha = (1 - w) / .12;
+  let trX = 0, trY = 0;
+  let scX = 1, scY = 1;
+  let blurPx = 0;
+  let glowBoost = 0;
+
+  if (animType !== "none" && animType !== "word") {
+    const w = (S.elapsed % dur) / dur;     // 0..1
+    const easeIn  = (p) => 1 - Math.pow(1 - p, 3);   // ease-out cubic
+    const easeOut = (p) => Math.pow(p, 3);            // ease-in cubic
+    const IN_END = 0.15;
+    const OUT_START = 0.85;
+
+    if (animType === "fade") {
+      if (w < IN_END)        alpha = w / IN_END;
+      else if (w > OUT_START) alpha = (1 - w) / (1 - OUT_START);
+    }
+    else if (animType === "slide") {
+      // ينزلق من اليمين دخولاً، لليسار خروجاً (مناسب لـ RTL)
+      if (w < IN_END) {
+        const p = w / IN_END;
+        alpha = p;
+        trX = (1 - easeIn(p)) * W * 0.4;
+      } else if (w > OUT_START) {
+        const p = (1 - w) / (1 - OUT_START);
+        alpha = p;
+        trX = -(1 - p) * W * 0.4;
+      }
+    }
+    else if (animType === "zoom") {
+      if (w < IN_END) {
+        const p = w / IN_END;
+        alpha = p;
+        scX = scY = 0.55 + 0.45 * easeIn(p);
+      } else if (w > OUT_START) {
+        const p = (1 - w) / (1 - OUT_START);
+        alpha = p;
+        scX = scY = 1 + (1 - p) * 0.35;
+      }
+    }
+    else if (animType === "drop") {
+      if (w < IN_END) {
+        const p = w / IN_END;
+        alpha = p;
+        trY = -(1 - easeIn(p)) * H * 0.25;
+      } else if (w > OUT_START) {
+        alpha = (1 - w) / (1 - OUT_START);
+      }
+    }
+    else if (animType === "rise") {
+      if (w < IN_END) {
+        const p = w / IN_END;
+        alpha = p;
+        trY = (1 - easeIn(p)) * H * 0.25;
+      } else if (w > OUT_START) {
+        alpha = (1 - w) / (1 - OUT_START);
+      }
+    }
+    else if (animType === "blur") {
+      if (w < IN_END) {
+        const p = w / IN_END;
+        alpha = p;
+        blurPx = (1 - p) * 18;
+      } else if (w > OUT_START) {
+        const p = (1 - w) / (1 - OUT_START);
+        alpha = p;
+        blurPx = (1 - p) * 12;
+      }
+    }
+    else if (animType === "glow") {
+      // توهج نابض بدل تلاشي
+      if (w < IN_END) alpha = w / IN_END;
+      else if (w > OUT_START) alpha = (1 - w) / (1 - OUT_START);
+      glowBoost = 12 + 16 * (0.5 + 0.5 * Math.sin(ts * 4));
+    }
   }
 
   ctx.save();
   ctx.textAlign = "center"; ctx.direction = "rtl";
   ctx.globalAlpha = alpha;
-  setTextFx(ctx, textEff, txtCol, shdCol);
+  if (blurPx > 0.5) ctx.filter = `blur(${blurPx}px)`;
+  // طبّق التحويلات حول مركز Canvas (يجعل zoom/slide حول النص)
+  if (trX || trY || scX !== 1 || scY !== 1) {
+    ctx.translate(W / 2, H / 2);
+    ctx.translate(trX, trY);
+    ctx.scale(scX, scY);
+    ctx.translate(-W / 2, -H / 2);
+  }
+  ctx.font = `${fsz}px ${font}`; ctx.fillStyle = txtCol;
+  const drawTxt = setTextFx(ctx, textEff, txtCol, shdCol);
+  if (glowBoost) ctx.shadowBlur = (ctx.shadowBlur || 0) + glowBoost;
 
   const lines = wrapText(ctx, aya.text, W * .85, fsz, font);
   const lineH = fsz * lh, totalH = lines.length * lineH;
@@ -1135,8 +1520,11 @@ function drawVerse(ctx, W, H, ts) {
   else if (tpos === "bottom") startY = H * .82 - totalH + fsz;
   else startY = H * .5 - totalH * (hasT ? .4 : .5) + fsz;
 
-  ctx.font = `${fsz}px ${font}`; ctx.fillStyle = txtCol;
-  lines.forEach((line, i) => ctx.fillText(line, W / 2, startY + i * lineH));
+  if (animType === "word") {
+    drawWordByWord(ctx, lines, W, startY, lineH, fsz, font, txtCol, dur, drawTxt);
+  } else {
+    lines.forEach((line, i) => drawTxt(W / 2, startY + i * lineH, line));
+  }
 
   if (hasT) {
     const tfsPct = gv("tfs") / 100;
@@ -1159,18 +1547,219 @@ function drawVerse(ctx, W, H, ts) {
   ctx.restore();
 }
 
+// ── الكشف التدريجي للكلمات ─────────────────────────────
+//   نُبقي تخطيط wrapText كما هو (نفس الأسطر بنفس العرض)
+//   ونرسم كلمة-بكلمة بمواقع مُحسوبة من قياس المسافات
+//   النتيجة: ظهور تتابعي بدون قفز في التموضع
+function drawWordByWord(ctx, lines, W, startY, lineH, fsz, font, txtCol, dur, drawTxt) {
+  const fadeMs = parseInt(gv("word-fade-ms") || "180");
+  const keepPrev = ge("word-keep");
+  const paceVal = $("word-pace")?.value || "auto";
+
+  // اجمع كل الكلمات مع موضعها (سطر + ترتيب داخل السطر)
+  const wordList = [];
+  lines.forEach((line, lineIdx) => {
+    const words = line.split(/\s+/).filter(Boolean);
+    words.forEach((w, wIdx) => wordList.push({ text: w, lineIdx, wIdx, lineWords: words }));
+  });
+
+  const N = wordList.length;
+  if (N === 0) return;
+
+  // مدة كل كلمة
+  const wordDuration = (paceVal === "auto")
+    ? (dur / N)
+    : parseFloat(paceVal);
+
+  const spaceW = ctx.measureText(" ").width;
+
+  // تخزين مؤقت لمواقع الكلمات داخل كل سطر
+  // (يُحسب لمرة واحدة لأن قياس النصوص ثابت لطول السطر)
+  const linePositions = lines.map(line => {
+    const words = line.split(/\s+/).filter(Boolean);
+    if (!words.length) return null;
+    const widths = words.map(w => ctx.measureText(w).width);
+    const lineW = widths.reduce((a, b) => a + b, 0) + spaceW * (words.length - 1);
+    const xRight = W / 2 + lineW / 2;  // الحافة اليمنى للسطر (RTL تبدأ من اليمين)
+    // x لكل كلمة = الحافة اليمنى لها (مع textAlign="right")
+    const xs = [];
+    let cur = xRight;
+    for (let i = 0; i < words.length; i++) {
+      xs.push(cur);
+      cur -= widths[i] + spaceW;
+    }
+    return xs;
+  });
+
+  // ارسم كل كلمة بفاصل زمني
+  const oldAlign = ctx.textAlign;
+  ctx.textAlign = "right";
+
+  for (let k = 0; k < N; k++) {
+    const wordStart = k * wordDuration;
+    if (S.elapsed < wordStart) continue;  // لم يحن وقتها بعد
+
+    // إن لم نُبقِ السابقات: نُظهر فقط الكلمة الحالية + التي تليها أثناء الـ fade
+    if (!keepPrev) {
+      const wordEnd = wordStart + wordDuration;
+      if (S.elapsed >= wordEnd) continue;
+    }
+
+    // حساب alpha التلاشي لهذه الكلمة
+    const sinceStart = S.elapsed - wordStart;
+    let a = 1;
+    if (fadeMs > 0 && sinceStart * 1000 < fadeMs) {
+      a = (sinceStart * 1000) / fadeMs;
+    }
+    if (!keepPrev) {
+      const fadeOutStart = wordDuration - fadeMs / 1000;
+      if (fadeMs > 0 && sinceStart > fadeOutStart) {
+        a = Math.min(a, (wordDuration - sinceStart) / (fadeMs / 1000));
+      }
+    }
+    a = Math.max(0, Math.min(1, a));
+
+    const w = wordList[k];
+    const xs = linePositions[w.lineIdx];
+    if (!xs) continue;
+    const x = xs[w.wIdx];
+    const y = startY + w.lineIdx * lineH;
+
+    ctx.save();
+    ctx.globalAlpha *= a;
+    ctx.fillStyle = txtCol;
+    if (typeof drawTxt === "function") drawTxt(x, y, w.text);
+    else                                ctx.fillText(w.text, x, y);
+    ctx.restore();
+  }
+
+  ctx.textAlign = oldAlign;
+}
+
+// ── تأثيرات النص — يُهيِّئ ctx ويُرجع دالة رسم تتعامل
+//    مع التأثيرات التي تحتاج عدة fillText/strokeText (outline, 3D, gradient)
 function setTextFx(ctx, eff, txtCol, shdCol) {
-  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+  ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+  ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
   const [sr, sg, sb] = hex2rgb(shdCol);
-  const fx = {
-    none: () => { ctx.shadowColor = `rgba(${sr},${sg},${sb},.7)`; ctx.shadowBlur = 12; },
-    glow: () => { ctx.shadowColor = "#f0c842"; ctx.shadowBlur = 28; },
-    neon: () => { ctx.shadowColor = "#00ff88"; ctx.shadowBlur = 22; },
-    shadow3d: () => { ctx.shadowColor = `rgba(0,0,0,.85)`; ctx.shadowBlur = 0; ctx.shadowOffsetX = 4; ctx.shadowOffsetY = 5; },
-    emboss: () => { ctx.shadowColor = "rgba(255,255,255,.25)"; ctx.shadowBlur = 0; ctx.shadowOffsetX = -2; ctx.shadowOffsetY = -2; },
-    outline: () => { ctx.shadowColor = "rgba(0,0,0,.9)"; ctx.shadowBlur = 0; ctx.lineWidth = 2; },
-  };
-  (fx[eff] || fx.none)();
+
+  // افتراضي بسيط (لا حاجة لرسم مخصّص)
+  const simple = (x, y, text) => ctx.fillText(text, x, y);
+
+  switch (eff) {
+    case "glow":
+      ctx.shadowColor = "#f0c842"; ctx.shadowBlur = 28;
+      return simple;
+
+    case "neon":
+      ctx.shadowColor = "#00ff88"; ctx.shadowBlur = 22;
+      // رسم مكرّر لتقوية التوهج
+      return (x, y, text) => { ctx.fillText(text, x, y); ctx.fillText(text, x, y); };
+
+    case "outline":
+      // حدود فعلية عبر strokeText قبل التعبئة
+      return (x, y, text) => {
+        const fontSize = parseInt(ctx.font) || 40;
+        ctx.save();
+        ctx.lineJoin = "round";
+        ctx.miterLimit = 2;
+        // حدود سوداء سميكة
+        ctx.strokeStyle = shdCol || "#000";
+        ctx.lineWidth = Math.max(3, fontSize * 0.08);
+        ctx.strokeText(text, x, y);
+        // ثم تعبئة النص
+        ctx.restore();
+        ctx.fillText(text, x, y);
+      };
+
+    case "shadow3d":
+      // ظل 3D حقيقي: طبقات متعدّدة بإزاحة متدرّجة
+      return (x, y, text) => {
+        const fontSize = parseInt(ctx.font) || 40;
+        const layers = 10;
+        const maxOff = Math.max(3, fontSize * 0.09);
+        const oldFill = ctx.fillStyle;
+        for (let i = layers; i >= 1; i--) {
+          const p = i / layers;
+          const off = maxOff * p;
+          ctx.fillStyle = `rgba(${sr},${sg},${sb},${0.55 * p})`;
+          ctx.fillText(text, x + off, y + off);
+        }
+        ctx.fillStyle = oldFill;
+        ctx.fillText(text, x, y);
+      };
+
+    case "emboss":
+      // إضاءة من الأعلى + ظل خفيف من الأسفل (يبدو بارزاً)
+      return (x, y, text) => {
+        const oldFill = ctx.fillStyle;
+        ctx.fillStyle = "rgba(255,255,255,0.55)";
+        ctx.fillText(text, x - 1.5, y - 1.5);
+        ctx.fillStyle = "rgba(0,0,0,0.65)";
+        ctx.fillText(text, x + 1.5, y + 1.5);
+        ctx.fillStyle = oldFill;
+        ctx.fillText(text, x, y);
+      };
+
+    case "carved":
+      // عكس emboss — يبدو محفوراً داخل السطح
+      return (x, y, text) => {
+        const oldFill = ctx.fillStyle;
+        ctx.fillStyle = "rgba(0,0,0,0.7)";
+        ctx.fillText(text, x - 1.5, y - 1.5);
+        ctx.fillStyle = "rgba(255,255,255,0.5)";
+        ctx.fillText(text, x + 1.5, y + 1.5);
+        ctx.fillStyle = oldFill;
+        ctx.globalCompositeOperation = "multiply";
+        ctx.fillText(text, x, y);
+        ctx.globalCompositeOperation = "source-over";
+      };
+
+    case "gold":
+      // تدرّج ذهبي معدني (chrome-like)
+      return (x, y, text) => {
+        const fontSize = parseInt(ctx.font) || 40;
+        const grad = ctx.createLinearGradient(x, y - fontSize, x, y + fontSize * 0.2);
+        grad.addColorStop(0,    "#fff5b0");
+        grad.addColorStop(0.3,  "#f0c842");
+        grad.addColorStop(0.55, "#b8860b");
+        grad.addColorStop(0.8,  "#f0c842");
+        grad.addColorStop(1,    "#fff5b0");
+        const oldFill = ctx.fillStyle;
+        ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 6;
+        ctx.fillStyle = grad;
+        ctx.fillText(text, x, y);
+        ctx.fillStyle = oldFill;
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+      };
+
+    case "fire":
+      // تدرّج ناري (أحمر/برتقالي/أصفر)
+      return (x, y, text) => {
+        const fontSize = parseInt(ctx.font) || 40;
+        const grad = ctx.createLinearGradient(x, y + fontSize * 0.3, x, y - fontSize);
+        grad.addColorStop(0,   "#7a0000");
+        grad.addColorStop(0.3, "#e63b00");
+        grad.addColorStop(0.7, "#ffb700");
+        grad.addColorStop(1,   "#fff5b0");
+        const oldFill = ctx.fillStyle;
+        ctx.shadowColor = "rgba(230,59,0,.7)"; ctx.shadowBlur = 18;
+        ctx.fillStyle = grad;
+        ctx.fillText(text, x, y);
+        ctx.fillStyle = oldFill;
+        ctx.shadowColor = "transparent"; ctx.shadowBlur = 0;
+      };
+
+    case "soft":
+      // ظل ناعم خفيف فقط (الأبسط)
+      ctx.shadowColor = `rgba(${sr},${sg},${sb},.5)`; ctx.shadowBlur = 16;
+      return simple;
+
+    case "none":
+    default:
+      ctx.shadowColor = `rgba(${sr},${sg},${sb},.7)`; ctx.shadowBlur = 12;
+      return simple;
+  }
 }
 
 function wrapText(ctx, text, maxW, fsz, font) {
@@ -1190,6 +1779,11 @@ function wrapText(ctx, text, maxW, fsz, font) {
 //  WAVEFORM
 // ══════════════════════════════════════════════════════
 function getWaveData(ts) {
+  // أثناء تصدير V2: استخدم بيانات FFT المُحسوبة مسبقاً من mixed buffer
+  if (S._exportWaveData) {
+    S.waveData = S._exportWaveData;
+    return;
+  }
   if (S.analyser) {
     const full = new Uint8Array(S.analyser.frequencyBinCount);
     S.analyser.getByteFrequencyData(full);
@@ -1233,7 +1827,8 @@ function drawWave(ctx, W, H, ts) {
   const shape = radioVal("ws");
   const col = $("wave-col").value;
   const pos = $("wave-pos").value;
-  const wh = parseInt(gv("wave-h"));
+  const gain = (parseInt(gv("wave-gain")) || 100) / 100;
+  const wh = parseInt(gv("wave-h")) * gain;
   const n = S.waveData.length;
   const [cr, cg, cb] = hex2rgb(col);
 
@@ -1345,6 +1940,77 @@ function drawWave(ctx, W, H, ts) {
         ctx.fillRect(i * bw, yTop, bw * 0.82, 2);
       }
     }
+  } else if (shape === "rays") {
+    // أشعة شعاعية من نقطة المنتصف نحو الخارج
+    const cx = W / 2;
+    const cy = (pos === "top") ? 4 + wh : H - 4;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    const halfArc = Math.PI * 0.85;       // 153 درجة (تجنّب الانتشار 360)
+    const startAngle = (pos === "top") ? (Math.PI / 2 - halfArc / 2) : (-Math.PI / 2 - halfArc / 2);
+    for (let i = 0; i < n; i++) {
+      const amp = (S.waveData[i] / 255) * wh;
+      const alpha = 0.4 + 0.55 * (S.waveData[i] / 255);
+      const a = startAngle + (i / (n - 1)) * halfArc;
+      const x1 = cx, y1 = cy;
+      const x2 = cx + Math.cos(a) * amp;
+      const y2 = cy + Math.sin(a) * amp;
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+      ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    }
+  } else if (shape === "triangles") {
+    // مثلثات قمتها للأعلى/أسفل
+    const bw = W / n;
+    for (let i = 0; i < n; i++) {
+      const bh = (S.waveData[i] / 255) * wh;
+      if (bh < 1) continue;
+      const alpha = 0.45 + 0.5 * (S.waveData[i] / 255);
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+      const cxBar = i * bw + bw * 0.5;
+      const yTip = BASE + SIGN * bh;
+      ctx.beginPath();
+      ctx.moveTo(cxBar - bw * 0.4, BASE);
+      ctx.lineTo(cxBar + bw * 0.4, BASE);
+      ctx.lineTo(cxBar, yTip);
+      ctx.closePath();
+      ctx.fill();
+    }
+  } else if (shape === "rings") {
+    // حلقات متمركزة تتمدّد بحجم الصوت
+    const cx = W / 2, cy = H / 2;
+    const baseR = Math.min(W, H) * 0.06;
+    const numRings = Math.min(n, 12);
+    for (let r = 0; r < numRings; r++) {
+      const idx = Math.floor((r / numRings) * n);
+      const amp = (S.waveData[idx] / 255) * wh * 0.6;
+      const radius = baseR + r * (Math.min(W, H) * 0.025) + amp;
+      const alpha = (0.4 + 0.5 * (S.waveData[idx] / 255)) * (1 - r / numRings);
+      ctx.strokeStyle = `rgba(${cr},${cg},${cb},${alpha})`;
+      ctx.lineWidth = 1.5 + 1.5 * (S.waveData[idx] / 255);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  } else if (shape === "mountains") {
+    // شكل جبال ناعم — منحنيات بيزيه بين النقاط
+    ctx.fillStyle = `rgba(${cr},${cg},${cb},0.18)`;
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.9)`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, BASE);
+    const step = W / (n - 1);
+    for (let i = 0; i < n - 1; i++) {
+      const bh = (S.waveData[i] / 255) * wh;
+      const nb = (S.waveData[i + 1] / 255) * wh;
+      const x = i * step, y = BASE + SIGN * bh;
+      const xN = (i + 1) * step, yN = BASE + SIGN * nb;
+      const cpX = (x + xN) / 2;
+      ctx.quadraticCurveTo(cpX, y, xN, yN);
+    }
+    ctx.lineTo(W, BASE);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
   }
 
   ctx.restore();
@@ -1403,11 +2069,18 @@ async function playRecitationAudio() {
 
   const onEnded = () => {
     if (!S.playing || myGen !== _recGen) return;
-    if (S.currentAya < S.verses.length - 1) {
-      S.currentAya++; S.elapsed = 0; playRecitationAudio(); updateAyaUI();
-    } else {
-      pausePlayer(); S.currentAya = 0; S.elapsed = 0; updateAyaUI();
-    }
+    // الانتظار حسب فاصل الصمت قبل الانتقال للآية التالية
+    const gap = getAyaGap();
+    const advance = () => {
+      if (!S.playing || myGen !== _recGen) return;
+      if (S.currentAya < S.verses.length - 1) {
+        S.currentAya++; S.elapsed = 0; playRecitationAudio(); updateAyaUI();
+      } else {
+        pausePlayer(); S.currentAya = 0; S.elapsed = 0; updateAyaUI();
+      }
+    };
+    if (gap > 0) setTimeout(advance, gap * 1000);
+    else advance();
   };
 
   try {
@@ -1480,6 +2153,61 @@ function stopRecitationAudio() {
   }
 }
 
+// ── تقطيع نطاق زمني للوسائط المحلية ───────────────────
+//   يطبَّق في المعاينة وفي تصدير V2 (المكتبية) عبر ffmpeg -ss/-to
+function getBgVidTrim() {
+  if (!ge("bg-vid-trim-on") || !S.bgVid) return null;
+  const s = Math.max(0, parseFloat(gv("bg-vid-trim-start")) || 0);
+  const e = Math.max(s + 0.1, parseFloat(gv("bg-vid-trim-end")) || s + 1);
+  const dur = S.bgVid.duration;
+  return { start: s, end: isFinite(dur) ? Math.min(e, dur) : e };
+}
+
+function getBgAudioTrim() {
+  if (!ge("bg-audio-trim-on") || !S.bgAudioEl) return null;
+  const s = Math.max(0, parseFloat(gv("bg-audio-trim-start")) || 0);
+  const e = Math.max(s + 0.1, parseFloat(gv("bg-audio-trim-end")) || s + 1);
+  const dur = S.bgAudioEl.duration;
+  return { start: s, end: isFinite(dur) ? Math.min(e, dur) : e };
+}
+
+function applyBgVidTrim() {
+  const t = getBgVidTrim();
+  if (!t || !S.bgVid) return;
+  if (S.bgVid.currentTime < t.start || S.bgVid.currentTime > t.end) {
+    try { S.bgVid.currentTime = t.start; } catch (_) {}
+  }
+  // ربط مراقب يعيد للبداية عند تجاوز end
+  if (!S.bgVid._trimHandler) {
+    S.bgVid._trimHandler = () => {
+      const tt = getBgVidTrim();
+      if (!tt) return;
+      if (S.bgVid.currentTime >= tt.end - 0.05) {
+        try { S.bgVid.currentTime = tt.start; } catch (_) {}
+      }
+    };
+    S.bgVid.addEventListener("timeupdate", S.bgVid._trimHandler);
+  }
+}
+
+function applyBgAudioTrim() {
+  const t = getBgAudioTrim();
+  if (!t || !S.bgAudioEl) return;
+  if (S.bgAudioEl.currentTime < t.start || S.bgAudioEl.currentTime > t.end) {
+    try { S.bgAudioEl.currentTime = t.start; } catch (_) {}
+  }
+  if (!S.bgAudioEl._trimHandler) {
+    S.bgAudioEl._trimHandler = () => {
+      const tt = getBgAudioTrim();
+      if (!tt) return;
+      if (S.bgAudioEl.currentTime >= tt.end - 0.05) {
+        try { S.bgAudioEl.currentTime = tt.start; } catch (_) {}
+      }
+    };
+    S.bgAudioEl.addEventListener("timeupdate", S.bgAudioEl._trimHandler);
+  }
+}
+
 function onBgAudio(input) {
   const file = input.files[0];
   if (!file) return;
@@ -1531,20 +2259,234 @@ function onBgMedia(input, type) {
     $("bg-img-preview").src = url;
     thumb.style.display = "block";
   } else {
-    const vid = document.createElement("video");
-    vid.src = url; vid.loop = true; vid.muted = true; vid.playsInline = true;
-    vid.onloadeddata = () => {
-      S.bgVid = vid;
-      // لا نُشغّل تلقائياً — يبدأ مع المشغل
-      toast("🎥 تم تحميل الفيديو — اضغط ▶️ للمعاينة", "success");
-    };
-    vid.onerror = () => toast("❌ فشل تحميل الفيديو", "error");
-    const thumb = $("bg-vid-thumb");
-    $("bg-vid-preview").src = url;
-    $("bg-vid-info").textContent = `${file.name} (${(file.size / 1e6).toFixed(1)}MB)`;
-    thumb.style.display = "block";
-    $("bg-vid-preview").src = url;
+    // رفع متعدد للفيديو: نُضيف كل ملف لقائمة الـ playlist
+    const files = Array.from(input.files || []);
+    if (!files.length) return;
+    files.forEach(f => addBgVidItem(f));
+    // أعد ضبط input حتى يقبل اختيار نفس الملفات لاحقاً
+    input.value = "";
   }
+}
+
+// ── إدارة قائمة مقاطع الخلفية (playlist) ──────────────
+function addBgVidItem(file) {
+  const url = URL.createObjectURL(file);
+  const vid = document.createElement("video");
+  vid.src = url; vid.muted = true; vid.playsInline = true; vid.preload = "auto";
+  // عند نهاية المقطع: انتقل للتالي تلقائياً (تتابع playlist)
+  vid.addEventListener("ended", () => switchToNextBgVid());
+  vid.onloadeddata = () => {
+    const item = {
+      file, vid, name: file.name,
+      dur: isFinite(vid.duration) ? vid.duration : 0,
+      url,
+      audioEnabled: false,   // الصوت معطّل افتراضياً
+      audioGain: 0.5,
+      audioBuffer: null,
+    };
+    S.bgVidItems.push(item);
+    // إن لم يكن هناك فيديو نشط، فعّل الأول
+    if (!S.bgVid) {
+      S.bgVid = vid;
+      S.bgVidFile = file;
+      S.bgVidActiveIdx = S.bgVidItems.length - 1;
+      $("bg-vid-preview").src = url;
+      $("bg-vid-thumb").style.display = "block";
+      // الفيديو يبقى متوقفاً عند الرفع — يُشغَّل فقط مع ضغط ▶️
+      try { vid.pause(); vid.currentTime = 0; } catch (_) {}
+    }
+    renderBgVidList();
+    if (S.bgVidItems.length === 1) {
+      toast("🎥 تم رفع المقطع — يمكن إضافة المزيد لتتابع الخلفيات", "success", 3500);
+    } else {
+      toast(`🎥 أُضيف المقطع (${S.bgVidItems.length} مجموع)`, "success", 2000);
+    }
+  };
+  vid.onerror = () => toast(`❌ فشل تحميل ${file.name}`, "error");
+  vid.load();
+}
+
+function switchToNextBgVid() {
+  if (S.bgVidItems.length < 2) {
+    if (S.bgVid) { try { S.bgVid.currentTime = 0; S.bgVid.play().catch(() => {}); } catch (_) {} }
+    return;
+  }
+  const nextIdx = (S.bgVidActiveIdx + 1) % S.bgVidItems.length;
+  S.bgVidActiveIdx = nextIdx;
+  const active = S.bgVidItems[nextIdx];
+  S.bgVid = active.vid;
+  S.bgVidFile = active.file;
+  // مهم: لا تُعِد currentTime — التالي يلعب فعلاً منذ crossfade
+  // (إعادته كانت تسبّب rewind مرئياً بقدر مدة الـ crossfade)
+  S.bgVidNext = null;
+  S.bgVidFadeProgress = 0;
+  if (S.playing || S._exportingV2) {
+    try { active.vid.play().catch(() => {}); } catch (_) {}
+  }
+}
+
+// ── Crossfade سلس قبل انتهاء المقطع الحالي ──────────
+//   المدة قابلة للضبط من UI (افتراضي 1 ث) — تطبَّق في المعاينة وتصدير V2
+//   easeInOutCubic: ينحني بسلاسة بدلاً من خط مستقيم → انتقال بصري أنعم
+function getCrossfadeDur() {
+  const ms = parseInt(gv("bg-crossfade-ms") || "1000");
+  return Math.max(0, ms) / 1000;
+}
+function easeInOutCubic(t) {
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+function updateBgVidCrossfade() {
+  if (!S.bgVid || S.bgVidItems.length < 2) {
+    S.bgVidNext = null; S.bgVidFadeProgress = 0; return;
+  }
+  const cur = S.bgVid;
+  if (!isFinite(cur.duration) || cur.duration <= 0) return;
+
+  const xf = getCrossfadeDur();
+  if (xf <= 0) { S.bgVidNext = null; S.bgVidFadeProgress = 0; return; }
+
+  const trim = (typeof getBgVidTrim === "function") ? getBgVidTrim() : null;
+  const endPoint = trim ? trim.end : cur.duration;
+  const remaining = endPoint - cur.currentTime;
+
+  if (remaining <= xf && remaining > 0) {
+    const nextIdx = (S.bgVidActiveIdx + 1) % S.bgVidItems.length;
+    const nextItem = S.bgVidItems[nextIdx];
+    if (S.bgVidNext !== nextItem.vid) {
+      S.bgVidNext = nextItem.vid;
+      try { nextItem.vid.currentTime = 0; nextItem.vid.play().catch(() => {}); } catch (_) {}
+    }
+    // التقدّم الخطي ثم easing لـ alpha أنعم
+    const linear = Math.max(0, Math.min(1, 1 - (remaining / xf)));
+    S.bgVidFadeProgress = easeInOutCubic(linear);
+  } else {
+    S.bgVidNext = null;
+    S.bgVidFadeProgress = 0;
+  }
+}
+
+function removeBgVidItem(idx) {
+  if (idx < 0 || idx >= S.bgVidItems.length) return;
+  const item = S.bgVidItems[idx];
+  try { item.vid.pause(); URL.revokeObjectURL(item.url); } catch (_) {}
+  S.bgVidItems.splice(idx, 1);
+  // تأثير فوري: فعّل الأول من الترتيب الجديد
+  if (S.bgVidItems.length === 0) {
+    S.bgVid = null; S.bgVidFile = null;
+    const thumb = $("bg-vid-thumb"); if (thumb) thumb.style.display = "none";
+    const prev = $("bg-vid-preview"); if (prev) prev.src = "";
+  } else {
+    activateBgVidByIndex(0, true);
+  }
+  renderBgVidList();
+}
+
+function moveBgVidItem(idx, dir) {
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= S.bgVidItems.length) return;
+  const [moved] = S.bgVidItems.splice(idx, 1);
+  S.bgVidItems.splice(newIdx, 0, moved);
+  // التأثير فوري: شغّل دائماً المقطع الأول من الترتيب الجديد
+  activateBgVidByIndex(0, /*resetTime*/ true);
+  renderBgVidList();
+}
+
+// ── تفعيل مقطع معين فوراً (يُستخدم بعد إعادة الترتيب أو الحذف) ──
+function activateBgVidByIndex(idx, resetTime = true) {
+  if (!S.bgVidItems.length) {
+    S.bgVid = null; S.bgVidFile = null; S.bgVidActiveIdx = 0;
+    const prev = $("bg-vid-preview");
+    if (prev) prev.src = "";
+    return;
+  }
+  idx = Math.max(0, Math.min(idx, S.bgVidItems.length - 1));
+  // أوقف الحالي
+  if (S.bgVid) { try { S.bgVid.pause(); } catch (_) {} }
+  const item = S.bgVidItems[idx];
+  S.bgVidActiveIdx = idx;
+  S.bgVid          = item.vid;
+  S.bgVidFile      = item.file;
+  // المعاينة المرئية في thumb
+  const prev = $("bg-vid-preview");
+  if (prev) prev.src = item.url;
+  // ابدأ من الصفر أو خذ في الاعتبار التقطيع
+  if (resetTime) {
+    try {
+      const t = getBgVidTrim();
+      item.vid.currentTime = t ? t.start : 0;
+    } catch (_) {}
+  }
+  // إن كان المشغّل قيد التشغيل، شغّل المقطع الجديد فوراً
+  if (S.playing) { try { item.vid.play().catch(() => {}); } catch (_) {} }
+}
+
+function applyBgVidItemAudio(item) {
+  if (!item || !item.vid) return;
+  item.vid.muted = !item.audioEnabled;
+  item.vid.volume = Math.max(0, Math.min(1, item.audioGain));
+}
+
+async function toggleBgVidAudio(idx) {
+  const item = S.bgVidItems[idx];
+  if (!item) return;
+  item.audioEnabled = !item.audioEnabled;
+  applyBgVidItemAudio(item);
+  if (item.audioEnabled && !item.audioBuffer) {
+    try {
+      const ctx = await resumeAudioCtx();
+      const ab = await item.file.arrayBuffer();
+      item.audioBuffer = await ctx.decodeAudioData(ab.slice(0));
+    } catch (e) {
+      console.warn("decode bg-vid audio failed:", e);
+      toast("⚠️ تعذّر فكّ صوت المقطع — سيعمل في المعاينة فقط", "info", 3500);
+    }
+  }
+  renderBgVidList();
+}
+
+function setBgVidVolume(idx, value) {
+  const item = S.bgVidItems[idx];
+  if (!item) return;
+  item.audioGain = Math.max(0, Math.min(1, value / 100));
+  applyBgVidItemAudio(item);
+}
+
+function renderBgVidList() {
+  const el = $("bg-vid-list");
+  if (!el) return;
+  if (!S.bgVidItems.length) { el.innerHTML = ""; return; }
+  el.innerHTML = S.bgVidItems.map((it, i) => {
+    const sz = (it.file.size / 1e6).toFixed(1);
+    const dur = it.dur ? it.dur.toFixed(1) + "ث" : "—";
+    const audioOn = it.audioEnabled;
+    const volPct = Math.round((it.audioGain || 0) * 100);
+    return `<div class="bgv-item" data-idx="${i}">
+      <span class="bgv-idx">${i + 1}</span>
+      <span class="bgv-name" title="${escHtml(it.name)}">${escHtml(it.name)}</span>
+      <span class="bgv-dur">${dur} · ${sz}MB</span>
+      <button data-act="audio" class="${audioOn ? 'on' : ''}" title="${audioOn ? 'كتم صوت المقطع' : 'تفعيل صوت المقطع'}">${audioOn ? '🔊' : '🔇'}</button>
+      <input type="range" class="bgv-vol" min="0" max="100" value="${volPct}" data-act="vol" title="مستوى صوت المقطع: ${volPct}%" ${audioOn ? '' : 'style="visibility:hidden"'}>
+      <button data-act="up"     ${i === 0 ? "disabled" : ""} title="أعلى">▲</button>
+      <button data-act="down"   ${i === S.bgVidItems.length - 1 ? "disabled" : ""} title="أسفل">▼</button>
+      <button data-act="remove" title="إزالة">✕</button>
+    </div>`;
+  }).join("");
+  el.querySelectorAll(".bgv-item button").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      const idx = parseInt(e.currentTarget.closest(".bgv-item").dataset.idx);
+      const act = e.currentTarget.dataset.act;
+      if (act === "up")          moveBgVidItem(idx, -1);
+      else if (act === "down")   moveBgVidItem(idx, +1);
+      else if (act === "remove") removeBgVidItem(idx);
+      else if (act === "audio")  toggleBgVidAudio(idx);
+    });
+  });
+  el.querySelectorAll(".bgv-item input.bgv-vol").forEach(inp => {
+    inp.addEventListener("input", (e) => {
+      const idx = parseInt(e.currentTarget.closest(".bgv-item").dataset.idx);
+      setBgVidVolume(idx, parseFloat(e.currentTarget.value));
+    });
+  });
 }
 
 function onBgTypeChange() {
@@ -1552,6 +2494,65 @@ function onBgTypeChange() {
   $("bg-grad-ctrl").style.display = v === "gradient" ? "block" : "none";
   $("bg-img-ctrl").style.display = v === "image" ? "block" : "none";
   $("bg-vid-ctrl").style.display = v === "video" ? "block" : "none";
+}
+
+function onTanimChange() {
+  const v = radioVal("tanim");
+  const wordCtrl = $("word-mode-ctrl");
+  if (wordCtrl) wordCtrl.style.display = (v === "word" || (v === "mix" && S.mixedAnimsOrder.includes("word"))) ? "block" : "none";
+  // قد يكون هناك أكثر من لوحة mix-anims-ctrl (في النصوص + FX) — أظهرها كلها
+  document.querySelectorAll(".mix-anims-ctrl").forEach(el => {
+    el.style.display = v === "mix" ? "block" : "none";
+  });
+  // مزامنة كل الراديوهات tanim (في القسمَين) مع بعضها
+  document.querySelectorAll(`input[name="tanim"]`).forEach(r => { r.checked = (r.value === v); });
+}
+
+// ── إدارة وضع "مختلط" ────────────────────────────────
+function onMixAnimChange(e) {
+  const v = e.target.value;
+  const order = S.mixedAnimsOrder;
+  if (e.target.checked) {
+    if (!order.includes(v)) order.push(v);
+  } else {
+    const idx = order.indexOf(v);
+    if (idx >= 0) order.splice(idx, 1);
+  }
+  updateMixAnimsUI();
+  try { localStorage.setItem("gt_sqrm_mixed_anims", JSON.stringify(order)); } catch (_) {}
+  // إن أُلغيت أو فُعِّلت "word" داخل mix، أعد فحص ظهور لوحة word-mode-ctrl
+  onTanimChange();
+}
+
+function restoreMixedAnimsOrder() {
+  try {
+    const saved = JSON.parse(localStorage.getItem("gt_sqrm_mixed_anims") || "[]");
+    if (Array.isArray(saved)) S.mixedAnimsOrder = saved.filter(v => typeof v === "string");
+  } catch (_) {}
+  updateMixAnimsUI();
+}
+
+function updateMixAnimsUI() {
+  const order = S.mixedAnimsOrder;
+  document.querySelectorAll(".mix-anim").forEach(cb => {
+    const idx = order.indexOf(cb.value);
+    cb.checked = idx >= 0;
+    const numEl = cb.parentElement.querySelector(".mix-num");
+    if (numEl) numEl.textContent = idx >= 0 ? `[${idx + 1}]` : "";
+  });
+  const labels = { fade:"تلاشي", slide:"انزلاق", zoom:"تكبير", drop:"سقوط", rise:"صعود", blur:"ضبابي", glow:"توهج", word:"كلمة-بكلمة" };
+  const text = order.length
+    ? "الترتيب: " + order.map((v, i) => `${i+1}. ${labels[v] || v}`).join(" ← ")
+    : "— اختر تأثيراً أو أكثر —";
+  // قد توجد عدة لوحات mix-anims-summary (في النصوص + FX) — حدّثها كلها
+  document.querySelectorAll(".mix-anims-summary").forEach(el => { el.textContent = text; });
+}
+
+// إرجاع تأثير الآية الحالية في وضع mix (يدور بترتيب الاختيار)
+function getMixedAnimForCurrentAya() {
+  const order = S.mixedAnimsOrder;
+  if (!order.length) return "fade"; // افتراضي إن لم يُختر شيء
+  return order[(S.currentAya || 0) % order.length];
 }
 
 // ══════════════════════════════════════════════════════
@@ -1837,11 +2838,13 @@ async function startExport(type) {
 
   audioBuffers.forEach((buf, i) => { if (buf) S.ayaDurations[i] = buf.duration; });
 
+  // فاصل الصمت يُضاف بعد كل آية (يدخل في ayaStarts التراكمية)
+  const ayaGap = getAyaGap();
   const ayaStarts = [];
   let acc = 0;
   for (let i = 0; i < S.verses.length; i++) {
     ayaStarts.push(acc);
-    acc += getDur(i);
+    acc += getDur(i) + ayaGap;
   }
   const totalDuration = acc;
   const FPS = parseInt(gv("export-fps") || "30") || 30;
@@ -1949,7 +2952,7 @@ async function startExport(type) {
   const getAyaAt = (t) => {
     let idx = S.verses.length - 1;
     for (let i = 0; i < S.verses.length; i++) {
-      if (t < ayaStarts[i] + getDur(i)) { idx = i; break; }
+      if (t < ayaStarts[i] + getDur(i) + ayaGap) { idx = i; break; }
     }
     return idx;
   };
@@ -2026,6 +3029,10 @@ function stopExportSources() {
 function cancelExport() {
   S.exportCancel = true;
   S.exporting = false;
+  // محرك V2: ضع علم الإلغاء واقتل ffmpeg
+  if (S.exportCancelRef) S.exportCancelRef.canceled = true;
+  try { window.SQRM?.ffmpegPipeCancel?.(); } catch (_) {}
+  // المسار القديم (MediaRecorder)
   stopExportSources();
   stopRecitationAudio();
   if (S.bgAudioEl) { S.bgAudioEl.pause(); S.bgAudioEl.currentTime = 0; }
@@ -2038,26 +3045,89 @@ function cancelExport() {
 }
 
 // ══════════════════════════════════════════════════════
-//  QURAN DATA
+//  QURAN DATA  (مع تخزين محلي دائم للعمل دون اتصال)
 // ══════════════════════════════════════════════════════
+//   - قائمة السور:   localStorage["gt_sqrm_surahs_v1"]    (دائمة)
+//   - نص القرآن:     localStorage["gt_sqrm_quran_idx_v1"] (يُحمَّل في الخلفية)
+//   - الترجمات:      localStorage["gt_sqrm_trans_{ed}_{n}"] (بالطلب)
+//   - sessionStorage احتياط رجعي إن فشل localStorage
+const SURAHS_KEY = "gt_sqrm_surahs_v1";
+
 async function loadSurahList() {
   const sel = $("surah-sel");
+  // 1) جرّب localStorage الدائم
+  let surahs = null;
+  try {
+    const cached = JSON.parse(localStorage.getItem(SURAHS_KEY) || "null");
+    if (Array.isArray(cached) && cached.length === 114) surahs = cached;
+  } catch (_) {}
+  // 2) جرّب sessionStorage (احتياط من نسخة قديمة)
+  if (!surahs) {
+    try {
+      const old = JSON.parse(sessionStorage.getItem("gt_surahs") || "null");
+      if (Array.isArray(old) && old.length === 114) {
+        surahs = old;
+        try { localStorage.setItem(SURAHS_KEY, JSON.stringify(surahs)); } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  if (surahs) {
+    S.surahs = surahs;
+    S.filteredSurahs = surahs;
+    renderSurahList(surahs);
+    await loadVerses();
+    return;
+  }
+
+  // 3) لا يوجد كاش — حمّل من الـ API
   sel.innerHTML = `<option>⏳ جاري التحميل…</option>`;
   try {
-    let surahs = JSON.parse(sessionStorage.getItem("gt_surahs") || "null");
-    if (!surahs) {
-      const r = await fetch(`${QURAN_API}/surah`);
-      const d = await r.json();
-      surahs = d.data;
-      sessionStorage.setItem("gt_surahs", JSON.stringify(surahs));
-    }
+    const r = await fetch(`${QURAN_API}/surah`);
+    const d = await r.json();
+    surahs = d.data;
     S.surahs = surahs;
-    sel.innerHTML = surahs.map(s => `<option value="${s.number}">${s.number}. ${s.name} — ${s.englishName}</option>`).join("");
+    S.filteredSurahs = surahs;
+    try { localStorage.setItem(SURAHS_KEY, JSON.stringify(surahs)); } catch (_) {}
+    renderSurahList(surahs);
     await loadVerses();
   } catch (e) {
     sel.innerHTML = `<option value="1">1. سورة الفاتحة</option>`;
     loadOfflineFallback();
   }
+}
+
+function renderSurahList(surahs) {
+  const sel = $("surah-sel");
+  if (!sel) return;
+  const prevVal = sel.value;
+  sel.innerHTML = surahs.map(s => `<option value="${s.number}">${s.number}. ${s.name} — ${s.englishName}</option>`).join("");
+  // أعد ضبط القيمة السابقة إن كانت ضمن النتائج
+  if (prevVal && surahs.some(s => String(s.number) === prevVal)) {
+    sel.value = prevVal;
+  }
+}
+
+// بحث السورة بالاسم — تطبيع عربي + ENGLISH name + رقم السورة
+function filterSurahs(query) {
+  if (!S.surahs?.length) return;
+  const raw = (query || "").trim();
+  let result;
+  if (!raw) {
+    result = S.surahs;
+  } else {
+    const nq = normalizeArabic(raw);
+    const lq = raw.toLowerCase();
+    result = S.surahs.filter(s => {
+      const arNorm = normalizeArabic(s.name || "");
+      const enLow  = (s.englishName || "").toLowerCase();
+      return arNorm.includes(nq)
+          || enLow.includes(lq)
+          || s.number.toString().includes(raw);
+    });
+  }
+  S.filteredSurahs = result;
+  renderSurahList(result);
 }
 
 function loadOfflineFallback() {
@@ -2074,6 +3144,238 @@ function loadOfflineFallback() {
   updateAyaUI();
 }
 
+// ══════════════════════════════════════════════════════
+//  بحث الآيات مع تطبيع التشكيل (Desktop / Browser)
+// ══════════════════════════════════════════════════════
+//  - يتجاهل التشكيل، يوحّد ألف/ياء/تاء مربوطة، يزيل التطويل
+//  - يبني فهرساً محلياً مرة واحدة عبر API ثم localStorage
+
+const QURAN_INDEX_KEY = "gt_sqrm_quran_idx_v1";
+
+// تطبيع نص عربي للمقارنة (يحذف التشكيل ويوحّد الأحرف الشائعة)
+function normalizeArabic(s) {
+  if (!s) return "";
+  return s
+    // تشكيل + ألف خنجرية + شدّة + سكون إلخ
+    .replace(/[ً-ْٰٓ-ٟ]/g, "")
+    // توحيد ألف
+    .replace(/[إأآٱا]/g, "ا")
+    // ألف مقصورة → ياء
+    .replace(/ى/g, "ي")
+    // تاء مربوطة → هاء
+    .replace(/ة/g, "ه")
+    // إزالة التطويل
+    .replace(/ـ/g, "")
+    // إزالة الهمزة المنفردة
+    .replace(/ء/g, "")
+    // ضغط الفراغات
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+// نفس التطبيع مع الاحتفاظ بخريطة موقع كل حرف (norm idx → original idx)
+function normalizeWithMap(s) {
+  if (!s) return { norm: "", map: [] };
+  let out = "";
+  const map = [];
+  let lastSpace = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    // skipped characters
+    if (/[ً-ْٰٓ-ٟـء]/.test(c)) continue;
+    let r;
+    if (/[إأآٱا]/.test(c)) r = "ا";
+    else if (c === "ى") r = "ي";
+    else if (c === "ة") r = "ه";
+    else if (/\s/.test(c)) {
+      if (lastSpace) continue;
+      r = " ";
+    } else {
+      r = c.toLowerCase();
+    }
+    out += r;
+    map.push(i);
+    lastSpace = (r === " ");
+  }
+  return { norm: out, map };
+}
+
+let _quranIdx = null;
+let _quranIdxLoading = null;
+
+async function loadQuranIndex() {
+  if (_quranIdx) return _quranIdx;
+  if (_quranIdxLoading) return _quranIdxLoading;
+
+  _quranIdxLoading = (async () => {
+    // 1) ذاكرة localStorage
+    try {
+      const cached = JSON.parse(localStorage.getItem(QURAN_INDEX_KEY) || "null");
+      if (cached && cached.v === 1 && Array.isArray(cached.verses) && cached.verses.length > 6000) {
+        _quranIdx = cached;
+        return cached;
+      }
+    } catch (_) {}
+
+    // 2) جلب من API
+    const r = await fetch(`${QURAN_API}/quran/quran-uthmani`);
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    const sd = d.data?.surahs || [];
+    const verses = [];
+    for (const s of sd) {
+      for (const a of s.ayahs) {
+        verses.push({
+          s:  s.number,
+          sn: s.name,
+          a:  a.numberInSurah,
+          t:  a.text,
+          n:  normalizeArabic(a.text),
+        });
+      }
+    }
+    const out = { v: 1, verses };
+    try { localStorage.setItem(QURAN_INDEX_KEY, JSON.stringify(out)); } catch (_) {}
+    _quranIdx = out;
+    return out;
+  })();
+
+  return _quranIdxLoading;
+}
+
+// تحميل الفهرس في خلفية بدء التطبيق (best-effort)
+function preloadQuranIndex() {
+  // إن كان في localStorage مسبقاً: تحميل فوري ومتزامن مع الواجهة
+  try {
+    const cached = JSON.parse(localStorage.getItem(QURAN_INDEX_KEY) || "null");
+    if (cached && cached.v === 1 && Array.isArray(cached.verses) && cached.verses.length > 6000) {
+      _quranIdx = cached;
+      console.log(`[Quran] Index ready from cache: ${cached.verses.length} verses`);
+      // إعادة تحميل الآيات الحالية بعد جاهزية الفهرس (إن لم تكن أُحمِّلت بعد)
+      if (!S.verses.length || S.verses.length < 1) loadVerses();
+      return;
+    }
+  } catch (_) {}
+
+  // وإلا حمّل من API في الخلفية
+  loadQuranIndex()
+    .then(idx => {
+      console.log(`[Quran] Index downloaded: ${idx.verses.length} verses, cached for offline`);
+      toast("📚 تم تحميل القرآن كاملاً للعمل دون اتصال", "success", 3500);
+    })
+    .catch(err => console.warn("[Quran] Index preload failed:", err));
+}
+
+function searchVerses(query, limit = 80) {
+  if (!_quranIdx) return [];
+  const nq = normalizeArabic(query);
+  if (!nq) return [];
+  const out = [];
+  for (const v of _quranIdx.verses) {
+    const idx = v.n.indexOf(nq);
+    if (idx >= 0) {
+      out.push({ s: v.s, sn: v.sn, a: v.a, t: v.t, matchIdx: idx, matchLen: nq.length });
+      if (out.length >= limit) break;
+    }
+  }
+  return out;
+}
+
+// تظليل النص الأصلي حول الكلمة المُطابِقَة (يستخدم خريطة التطبيع)
+function highlightVerseMatch(text, matchIdx, matchLen) {
+  const { map } = normalizeWithMap(text);
+  if (matchIdx < 0 || matchIdx >= map.length) return escHtml(text);
+  const start = map[matchIdx];
+  const end   = matchIdx + matchLen - 1 < map.length ? (map[matchIdx + matchLen - 1] + 1) : text.length;
+  return escHtml(text.slice(0, start))
+       + "<mark>" + escHtml(text.slice(start, end)) + "</mark>"
+       + escHtml(text.slice(end));
+}
+
+function escHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]);
+}
+
+// ── واجهة البحث ─────────────────────────────────────────
+async function onVerseSearchInput(e) {
+  const q = e.target.value || "";
+  const resultsEl = $("verse-search-results");
+  const clearBtn  = $("verse-search-clear-btn");
+  if (clearBtn) clearBtn.style.display = q ? "" : "none";
+  if (!q.trim()) {
+    if (resultsEl) { resultsEl.style.display = "none"; resultsEl.innerHTML = ""; }
+    return;
+  }
+
+  // أظهر مؤشر تحميل عند أول بحث (تحميل الفهرس)
+  if (!_quranIdx) {
+    resultsEl.style.display = "block";
+    resultsEl.innerHTML = `<div class="vs-loading">⏳ تحميل فهرس القرآن (مرّة واحدة فقط)…</div>`;
+    try {
+      await loadQuranIndex();
+    } catch (err) {
+      resultsEl.innerHTML = `<div class="vs-empty">❌ فشل تحميل الفهرس: ${escHtml(err.message)}</div>`;
+      return;
+    }
+  }
+
+  const results = searchVerses(q);
+  if (!results.length) {
+    resultsEl.style.display = "block";
+    resultsEl.innerHTML = `<div class="vs-empty">لا توجد نتائج تطابق "${escHtml(q)}"</div>`;
+    return;
+  }
+
+  resultsEl.style.display = "block";
+  resultsEl.innerHTML = results.map(r =>
+    `<div class="vs-item" data-s="${r.s}" data-a="${r.a}">
+       <div class="vs-head"><span>${escHtml(r.sn)} • آية ${r.a}</span><span>📖 ${r.s}:${r.a}</span></div>
+       <div class="vs-text">${highlightVerseMatch(r.t, r.matchIdx, r.matchLen)}</div>
+     </div>`
+  ).join("");
+
+  resultsEl.querySelectorAll(".vs-item").forEach(it => {
+    it.addEventListener("click", () => {
+      const s = parseInt(it.dataset.s);
+      const a = parseInt(it.dataset.a);
+      jumpToVerse(s, a);
+    });
+  });
+}
+
+async function jumpToVerse(surahNum, ayaNum) {
+  const sel = $("surah-sel");
+  if (sel) sel.value = surahNum;
+  // اضبط مدى الآيات على الآية المختارة (وثلاث بعدها كحدّ معقول)
+  const fromEl = $("from-aya"), toEl = $("to-aya");
+  if (fromEl) fromEl.value = ayaNum;
+  if (toEl) {
+    const cur = S.surahs.find(s => s.number === surahNum);
+    const max = cur?.numberOfAyahs || ayaNum;
+    toEl.value = Math.min(max, ayaNum + 2);
+  }
+  // اخفِ نتائج البحث وامسح الحقل
+  const resultsEl = $("verse-search-results");
+  if (resultsEl) { resultsEl.style.display = "none"; resultsEl.innerHTML = ""; }
+  const inp = $("verse-search-inp");
+  if (inp) inp.value = "";
+  const clr = $("verse-search-clear-btn");
+  if (clr) clr.style.display = "none";
+  // حمّل الآيات
+  await loadVerses();
+  toast(`📖 الانتقال إلى ${ayaNum}:${surahNum}`, "success", 1800);
+}
+
+function clearVerseSearch() {
+  const inp = $("verse-search-inp");
+  const resultsEl = $("verse-search-results");
+  const clr = $("verse-search-clear-btn");
+  if (inp) inp.value = "";
+  if (resultsEl) { resultsEl.style.display = "none"; resultsEl.innerHTML = ""; }
+  if (clr) clr.style.display = "none";
+}
+
 function onSurahChange() { loadVerses(); }
 async function loadVerses() {
   const surahNum = parseInt($("surah-sel").value) || 1;
@@ -2082,22 +3384,46 @@ async function loadVerses() {
   const surah = S.surahs.find(s => s.number === surahNum);
   if (surah) { const max = surah.numberOfAyahs; if (to > max) $("to-aya").value = max; }
   $("aya-info").textContent = "⏳ جاري تحميل الآيات…";
-  try {
-    const ck = `gt_v_${surahNum}_${from}_${to}`;
-    let verses = JSON.parse(sessionStorage.getItem(ck) || "null");
-    if (!verses) {
+
+  let verses = null;
+  let source = "";
+
+  // 1) جرّب فهرس القرآن المحلي الكامل (الأسرع — يعمل دون اتصال)
+  if (_quranIdx?.verses?.length) {
+    const matched = _quranIdx.verses
+      .filter(v => v.s === surahNum && v.a >= from && v.a <= to)
+      .map(v => ({ numberInSurah: v.a, text: v.t }));
+    if (matched.length) { verses = matched; source = "📚 محلي"; }
+  }
+
+  // 2) جرّب sessionStorage (كاش جلسة سابقة)
+  if (!verses) {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(`gt_v_${surahNum}_${from}_${to}`) || "null");
+      if (Array.isArray(cached) && cached.length) { verses = cached; source = "🗂 جلسة"; }
+    } catch (_) {}
+  }
+
+  // 3) آخر حل: API الخارجي
+  if (!verses) {
+    try {
       const r = await fetch(`${QURAN_API}/surah/${surahNum}/quran-uthmani`);
       const d = await r.json();
-      verses = d.data.ayahs.filter(a => a.numberInSurah >= from && a.numberInSurah <= to);
-      sessionStorage.setItem(ck, JSON.stringify(verses));
+      verses = d.data.ayahs.filter(a => a.numberInSurah >= from && a.numberInSurah <= to)
+                            .map(a => ({ numberInSurah: a.numberInSurah, text: a.text }));
+      try { sessionStorage.setItem(`gt_v_${surahNum}_${from}_${to}`, JSON.stringify(verses)); } catch (_) {}
+      source = "🌐 شبكة";
+    } catch (e) {
+      $("aya-info").textContent = "⚠️ فشل التحميل (لا توجد بيانات محلية أو اتصال)";
+      if (!S.verses.length) loadOfflineFallback();
+      return;
     }
-    S.verses = verses; S.currentAya = 0; S.elapsed = 0; S.ayaDurations = [];
-    $("aya-info").textContent = `✅ ${verses.length} آية من سورة ${surah?.name || ""}`;
-    updateAyaUI();
-    await loadTranslations();
-  } catch (e) {
-    $("aya-info").textContent = "⚠️ فشل التحميل"; if (!S.verses.length) loadOfflineFallback();
   }
+
+  S.verses = verses; S.currentAya = 0; S.elapsed = 0; S.ayaDurations = [];
+  $("aya-info").textContent = `✅ ${verses.length} آية من سورة ${surah?.name || ""} ${source}`;
+  updateAyaUI();
+  await loadTranslations();
 }
 
 function onTransChange() {
@@ -2110,17 +3436,29 @@ async function loadTranslations() {
   const surahNum = parseInt($("surah-sel").value) || 1;
   const from = parseInt($("from-aya").value) || 1;
   const to = parseInt($("to-aya").value) || 7;
+  // كاش لكل (سورة، نسخة) في localStorage — يبقى بين الجلسات
+  const persistKey = `gt_sqrm_trans_${edition}_${surahNum}`;
+  let allAyahs = null;
+
+  // 1) localStorage الدائم
   try {
-    const ck = `gt_t_${surahNum}_${from}_${to}_${edition}`;
-    let trans = JSON.parse(sessionStorage.getItem(ck) || "null");
-    if (!trans) {
+    const cached = JSON.parse(localStorage.getItem(persistKey) || "null");
+    if (Array.isArray(cached) && cached.length) allAyahs = cached;
+  } catch (_) {}
+
+  // 2) آخر حل: API
+  if (!allAyahs) {
+    try {
       const r = await fetch(`${QURAN_API}/surah/${surahNum}/${edition}`);
       const d = await r.json();
-      trans = d.data.ayahs.filter(a => a.numberInSurah >= from && a.numberInSurah <= to).map(a => a.text);
-      sessionStorage.setItem(ck, JSON.stringify(trans));
-    }
-    S.translations = trans;
-  } catch (e) { S.translations = []; }
+      allAyahs = d.data.ayahs.map(a => ({ n: a.numberInSurah, t: a.text }));
+      try { localStorage.setItem(persistKey, JSON.stringify(allAyahs)); } catch (_) {}
+    } catch (e) { S.translations = []; return; }
+  }
+
+  S.translations = allAyahs
+    .filter(a => a.n >= from && a.n <= to)
+    .map(a => a.t);
 }
 
 // ══════════════════════════════════════════════════════
@@ -2143,29 +3481,37 @@ async function loadLocalFonts(showToast = false) {
     const list = await r.json();
     if (!Array.isArray(list)) return;
     let added = 0;
+    let reloaded = 0;
     for (const item of list) {
       if (!item.name || !item.file) continue;
-      if (S.allFonts.find(x => x.name === item.name)) continue;
       try {
         let rawFile = item.file;
         try { rawFile = decodeURIComponent(rawFile); } catch(_) {}
         const fontUrl = `fonts/${rawFile.split('/').map(encodeURIComponent).join('/')}`;
+        // حمّل ملف الخط دائماً (FontFace) حتى لو الاسم موجود في BUILT_IN_FONTS
+        // — كان الـ skip السابق يمنع تسجيل ملف الخط الفعلي وتظهر الخطوط فارغة
         const face = new FontFace(item.name, `url(${fontUrl})`);
         await face.load();
         document.fonts.add(face);
-        S.allFonts.push({
-          id: "local_" + item.name,
-          name: item.name,
-          css: `'${item.name}'`,
-          sample: item.sample || "بِسْمِ اللَّهِ"
-        });
-        added++;
+        // أضف لقائمة الواجهة فقط إن لم يكن موجوداً
+        if (!S.allFonts.find(x => x.name === item.name)) {
+          S.allFonts.push({
+            id: "local_" + item.name,
+            name: item.name,
+            css: `'${item.name}'`,
+            sample: item.sample || "بِسْمِ اللَّهِ"
+          });
+          added++;
+        } else {
+          reloaded++;
+        }
       } catch (e) {
         console.warn("Font load failed:", item.name, e);
       }
     }
     renderFontGrid();
-    if (showToast) toast(added > 0 ? `✅ تم تحميل ${added} خطوط محلية` : "لا توجد خطوط جديدة في fonts/", "info");
+    const total = added + reloaded;
+    if (showToast) toast(total > 0 ? `✅ ${added} خط جديد + ${reloaded} مُعاد ربطها` : "لا توجد خطوط في fonts/", "info");
   } catch (e) {
     console.warn("fonts.json error:", e);
     if (showToast) toast("📁 تأكد من وجود ملف fonts/fonts.json", "info");
@@ -2355,8 +3701,8 @@ function renderTemplates() {
 }
 
 function delTemplate(i) { S.templates.splice(i, 1); persistTemplates(); renderTemplates(); toast("🗑️ تم الحذف", "info"); }
-function loadTemplates() { try { S.templates = JSON.parse(localStorage.getItem("gt_sqr_tpls") || "[]"); } catch (e) { S.templates = []; } renderTemplates(); }
-function persistTemplates() { try { localStorage.setItem("gt_sqr_tpls", JSON.stringify(S.templates)); } catch (e) { } }
+function loadTemplates() { try { S.templates = JSON.parse(localStorage.getItem("gt_sqrm_tpls") || "[]"); } catch (e) { S.templates = []; } renderTemplates(); }
+function persistTemplates() { try { localStorage.setItem("gt_sqrm_tpls", JSON.stringify(S.templates)); } catch (e) { } }
 
 // ══════════════════════════════════════════════════════
 //  TABS
@@ -2476,6 +3822,7 @@ const RECITERS_KEY   = "gt_sqrm_reciters_v2";
 // العناصر التي لا يجب حفظها (مؤقتة أو وظيفية)
 const SETTINGS_SKIP = new Set([
   "tpl-name-inp","surah-sel","from-aya","to-aya",
+  "verse-search-inp","surah-search","preset-sel",
   "bg-img-input","bg-vid-input","ytdlp-url","custom-fonts-input",
   "bg-audio-input","ar-name","ar-flag","ar-folder",
   "dl-start-m","dl-start-s","dl-end-m","dl-end-s",
@@ -2559,6 +3906,16 @@ function resetAllSettings() {
   if (!confirm("⚠️ سيتم إعادة جميع الإعدادات للافتراضي — هل تريد المتابعة؟")) return;
   localStorage.removeItem(SETTINGS_KEY);
   localStorage.removeItem(RECITERS_KEY);
+  // امسح كاش القرآن والترجمات لإجبار التحميل المُحدَّث
+  localStorage.removeItem(QURAN_INDEX_KEY);
+  localStorage.removeItem(SURAHS_KEY);
+  // ترجمات: مفاتيح متعددة، نمسح كل ما يبدأ بـ gt_sqrm_trans_
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("gt_sqrm_trans_")) localStorage.removeItem(k);
+    }
+  } catch (_) {}
   location.reload();
 }
 
@@ -3023,88 +4380,220 @@ function startExportAsync(codec) {
 }
 
 // ══════════════════════════════════════════════════════
-//  FFMPEG EXPORT (Electron)
+//  محرك التصدير الحتمي V2 — إطار-بإطار → ffmpeg مباشرة
+//  لا يستخدم MediaRecorder/captureStream إطلاقاً
+//  مزايا: لا تقطّع، دقّة زمنية كاملة، مدّة MP4 صحيحة
 // ══════════════════════════════════════════════════════
-const DESKTOP_CODECS = {
-  "mp4-h264": { label: "MP4 H.264",  ext: "mp4",  codec: "libx264",    crf: 23, preset: "medium", acodec: "aac",      abr: "192k" },
-  "mp4-h265": { label: "MP4 H.265",  ext: "mp4",  codec: "libx265",    crf: 28, preset: "medium", acodec: "aac",      abr: "192k" },
-  "webm-vp9": { label: "WebM VP9",   ext: "webm", codec: "libvpx-vp9", crf: 33, preset: "good",   acodec: "libopus",  abr: "160k" },
-  "mkv-av1":  { label: "MKV AV1",    ext: "mkv",  codec: "libaom-av1", crf: 35, preset: "good",   acodec: "libopus",  abr: "160k" },
-};
-
 async function startExportDesktop(codecKey) {
   if (!IS_DESKTOP) {
     startExport(codecKey === "webm-vp9" ? "webm" : "mp4");
     return;
   }
+  if (!S.verses.length) { toast("⚠️ لا توجد آيات", "error"); return; }
+  if (S.exporting)      { toast("⚠️ تصدير جارٍ بالفعل", "info"); return; }
 
-  const fmt = DESKTOP_CODECS[codecKey] || DESKTOP_CODECS["mp4-h264"];
-  const userCrf = parseInt(gv("export-crf") || "") || fmt.crf;
-  const userPreset = $("export-preset")?.value || fmt.preset;
-  const userAbr = $("export-abr")?.value || fmt.abr;
+  const codecs = window.EXPORT_CODECS || {};
+  const fmt    = codecs[codecKey] || codecs["mp4-h264"];
+  const userCrf    = parseInt(gv("export-crf") || "") || fmt.defaultCrf;
+  const userPreset = $("export-preset")?.value || "veryfast";
+  const userAbr    = $("export-abr")?.value    || "192k";
+  const FPS        = parseInt(gv("export-fps") || "30") || 30;
 
-  return new Promise((resolve, reject) => {
-    const patchMR = () => {
-      if (!S.mediaRecorder) return;
-      const mr = S.mediaRecorder;
-      mr.onstop = async () => {
-        stopExportSources();
-        if (S.exportCancel) { $("rec-ov").classList.remove("on"); reject(new Error("cancelled")); return; }
+  // ── إعداد الواجهة وحالة التصدير ────────────────────
+  S.exportCancel = false;
+  S.exporting    = true;
+  const cancelRef = { canceled: false };
+  S.exportCancelRef = cancelRef;
 
-        $("rec-sub").textContent = "🔧 جاري الترميز بـ ffmpeg…";
+  $("rec-ov").classList.add("on");
+  $("rec-fill").style.width = "0%";
+  $("rec-pct").textContent  = "0%";
+  $("rec-sub").textContent  = "⏳ جاري تحميل الصوتيات…";
 
-        const blob = new Blob(S.exportChunks, { type: "video/webm" });
-        const arrBuf = await blob.arrayBuffer();
+  // أوقف كل تشغيل حيّ — المعاينة لا تتدخل في التصدير
+  stopRecitationAudio();
+  if (S.bgAudioEl)            S.bgAudioEl.pause();
+  if (S.bgVid && !S.bgVid.paused) { try { S.bgVid.pause(); } catch (_) {} }
 
-        let tmpPath, outputPath;
-        try {
-          tmpPath = await window.SQRM.writeTempFile(arrBuf);
-          outputPath = await window.SQRM.dialogSave({
-            title: `حفظ بصيغة ${fmt.label}`,
-            defaultPath: `GT-SQRM_${Date.now()}.${fmt.ext}`,
-              ext: fmt.ext,
-              filters: [{ name: fmt.label, extensions: [fmt.ext] }],
-          });
-          if (!outputPath) { cleanupTmp(tmpPath); resolve(); return; }
-        } catch (e) { reject(e); return; }
+  const ctx = await resumeAudioCtx();
 
-        window.SQRM.onFfmpegProgress(({ time, log }) => {
-          $("rec-sub").textContent = `🎬 ffmpeg: ${time} — ${fmt.label}`;
-          const logEl = $("ffmpeg-log");
-          if (logEl) { logEl.textContent = log; }
-        });
+  // ── تحميل صوت كل آية كـ AudioBuffer ────────────────
+  const manualDur = parseFloat(gv("aya-dur")) || 6;
+  const getDur    = (i) => (S.ayaDurations[i] && S.ayaDurations[i] > 0.5) ? S.ayaDurations[i] : manualDur;
+  const surahNum  = parseInt($("surah-sel").value) || 1;
+  const reciter   = S.reciters.find(r => r.id === radioVal("reciter")) || S.reciters[0];
+  const recGain   = gv("rec-vol") / 100;
 
-        try {
-          await window.SQRM.ffmpegEncode({
-            inputPath: tmpPath,
-            outputPath,
-            codec: fmt.codec,
-            crf: userCrf,
-            preset: userPreset,
-            audioCodec: fmt.acodec,
-            audioBitrate: userAbr,
-          });
-          window.SQRM.offFfmpegProgress();
-          window.SQRM.deleteTempFile?.(tmpPath);
-          $("rec-ov").classList.remove("on");
-          cleanupExportMute();
-          toast(`✅ تم التصدير: ${fmt.label}`, "success");
-          window.SQRM.openFolder(outputPath);
-          resolve();
-        } catch (e) {
-          window.SQRM.offFfmpegProgress();
-          window.SQRM.deleteTempFile?.(tmpPath);
-          $("rec-ov").classList.remove("on");
-          cleanupExportMute();
-          toast("❌ فشل ffmpeg: " + e.message.slice(0, 100), "error");
-          reject(e);
-        }
-      };
-    };
+  let loaded = 0;
+  const audioBuffers = await Promise.all(S.verses.map(async (aya, i) => {
+    if (cancelRef.canceled) return null;
+    const url = buildAudioUrl(reciter.folder, surahNum, aya.numberInSurah);
+    try {
+      const res = await fetch(url, { cache: "force-cache" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const ab  = await res.arrayBuffer();
+      const buf = await ctx.decodeAudioData(ab.slice(0));
+      S.ayaDurations[i] = buf.duration;
+      loaded++;
+      $("rec-sub").textContent = `⏳ تحميل الصوت… ${loaded}/${S.verses.length}`;
+      return buf;
+    } catch (_) {
+      loaded++;
+      $("rec-sub").textContent = `⏳ تحميل الصوت… ${loaded}/${S.verses.length} ⚠️`;
+      return null;
+    }
+  }));
 
-    startExport(fmt.ext === "webm" ? "webm" : "mp4");
-    setTimeout(patchMR, 80);
+  if (cancelRef.canceled) { _finishExportUi(); return; }
+
+  // ── حساب البداية الزمنية لكل آية والمدة الكلية ─────
+  // فاصل صمت يُحشر بعد كل آية ضمن الخانة الزمنية
+  const ayaGap = getAyaGap();
+  const ayaStarts = [];
+  let acc = 0;
+  for (let i = 0; i < S.verses.length; i++) { ayaStarts.push(acc); acc += getDur(i) + ayaGap; }
+  const totalDuration = acc;
+  if (totalDuration < 0.5) {
+    _finishExportUi();
+    toast("⚠️ المدة قصيرة جداً", "error");
+    return;
+  }
+
+  // ── فك ترميز صوت الخلفية (إن وُجد) ─────────────────
+  let bgBuffer = null;
+  const bgGain = (gv("bg-vol") || 0) / 100;
+  const bgLoop = ge("bg-loop");
+  if (S.bgAudioEl && S.bgAudioEl.src) {
+    try {
+      $("rec-sub").textContent = "⏳ فك ترميز صوت الخلفية…";
+      const res = await fetch(S.bgAudioEl.src);
+      const ab  = await res.arrayBuffer();
+      bgBuffer  = await ctx.decodeAudioData(ab.slice(0));
+    } catch (e) { console.warn("bg decode failed:", e); }
+  }
+
+  // ── حوار حفظ الملف ─────────────────────────────────
+  $("rec-sub").textContent = "📁 اختر مكان الحفظ…";
+  const lastDir = localStorage.getItem("gt_sqrm_lastExportDir") || "";
+  const filename = `GT-SQRM_${Date.now()}.${fmt.ext}`;
+  const outputPath = await window.SQRM.dialogSave({
+    title: `حفظ بصيغة ${fmt.label}`,
+    defaultPath: lastDir ? (lastDir.replace(/\/$/, "") + "/" + filename) : filename,
+    ext: fmt.ext,
+    filters: [{ name: fmt.label, extensions: [fmt.ext] }],
   });
+  if (!outputPath) { _finishExportUi(); return; }
+  // احفظ المجلد للمرة القادمة (للتصدير فقط — تنزيلات yt-dlp/wget لها مفتاحها الخاص dlSavePath)
+  try {
+    const dir = outputPath.replace(/[\\/][^\\/]*$/, "");
+    if (dir) localStorage.setItem("gt_sqrm_lastExportDir", dir);
+  } catch (_) {}
+
+  // ── دالة استنتاج الآية الحالية من الزمن (تشمل فاصل الصمت) ──
+  const getAyaAt = (t) => {
+    for (let i = 0; i < S.verses.length; i++) {
+      if (t < ayaStarts[i] + getDur(i) + ayaGap) return i;
+    }
+    return S.verses.length - 1;
+  };
+  const savedAya       = S.currentAya;
+  const savedElapsed   = S.elapsed;
+  const savedBgMotionT = S.bgMotionT;
+  const setStateForTime = (t) => {
+    const idx = getAyaAt(Math.min(t, totalDuration - 1e-4));
+    S.currentAya = idx;
+    S.elapsed    = Math.max(0, t - ayaStarts[idx]);
+    S.bgMotionT  = t;  // مزامنة حركة الخلفية مع الزمن الحتمي للإطار
+  };
+
+  // ── قراءة بايتات فيديو/فيديوهات الخلفية ─────────────
+  let bgVideoBytes = null;
+  let bgVideoBytesList = null;
+  let bgClipDurations = null;
+  if (S.bgVidItems && S.bgVidItems.length > 1) {
+    try {
+      $("rec-sub").textContent = `📥 قراءة ${S.bgVidItems.length} مقاطع للخلفية…`;
+      bgVideoBytesList = await Promise.all(S.bgVidItems.map(it => it.file.arrayBuffer()));
+      bgClipDurations  = S.bgVidItems.map(it => it.dur || 0);
+    } catch (e) { console.warn("multi-bg bytes read failed:", e); }
+  } else if (S.bgVid && S.bgVidFile) {
+    try {
+      $("rec-sub").textContent = "📥 قراءة فيديو الخلفية…";
+      bgVideoBytes = await S.bgVidFile.arrayBuffer();
+    } catch (e) {
+      console.warn("Could not read bg video file bytes:", e);
+    }
+  }
+  // قراءة إعدادات التقطيع
+  const bgVidTrim = getBgVidTrim();
+  const bgAudioTrim = getBgAudioTrim();
+
+  // ── متابع لسجل ffmpeg ──────────────────────────────
+  const logEl = $("ffmpeg-log");
+  if (logEl) logEl.textContent = "";
+  window.SQRM.onFfmpegProgress(({ log }) => {
+    if (logEl && log) {
+      logEl.textContent = (logEl.textContent + "\n" + log).slice(-4000);
+    }
+  });
+
+  // ── التنفيذ الفعلي ─────────────────────────────────
+  try {
+    await window.startDesktopExportV2({
+      canvas: $("cv"),
+      drawFrame,
+      setStateForTime,
+      setBgFrameImage: (img) => { S._exportBgFrameImg = img; },
+      totalDuration,
+      fps: FPS,
+      audioBuffers,
+      ayaStarts,
+      bgBuffer, bgGain, bgLoop,
+      recGain,
+      bgVideo: S.bgVid,
+      bgVideoBytes,
+      bgVideoBytesList,
+      bgClipDurations,      // مدّة كل مقطع — لازم للـ crossfade xfade
+      bgCrossfadeSec: getCrossfadeDur(),  // نفس مدة المعاينة بالضبط
+      bgVidTrim,
+      bgAudioTrim,
+      codecKey,
+      crf:          userCrf,
+      preset:       userPreset,
+      audioBitrate: userAbr,
+      outputPath,
+      cancelRef,
+      onProgress: (pct, label) => {
+        const cp = Math.max(0, Math.min(100, Math.round(pct)));
+        $("rec-fill").style.width = cp + "%";
+        $("rec-pct").textContent  = cp + "%";
+        if (label) $("rec-sub").textContent = label;
+      },
+    });
+    toast(`✅ تم التصدير: ${fmt.label}`, "success");
+    try { window.SQRM.openFolder?.(outputPath); } catch (_) {}
+  } catch (e) {
+    if (e && e.message === "cancelled") toast("تم إلغاء التصدير", "info");
+    else {
+      console.error("Export V2 failed:", e);
+      toast("❌ فشل التصدير: " + String(e.message || e).slice(0, 140), "error");
+    }
+  } finally {
+    window.SQRM.offFfmpegProgress?.();
+    S.currentAya       = savedAya;
+    S.elapsed          = savedElapsed;
+    S.bgMotionT        = savedBgMotionT;
+    S._exportBgFrameImg = null;
+    updateAyaUI();
+    _finishExportUi();
+  }
+}
+
+function _finishExportUi() {
+  S.exporting = false;
+  S.exportCancelRef = null;
+  $("rec-ov").classList.remove("on");
+  cleanupExportMute();
 }
 
 function cleanupTmp(path) {

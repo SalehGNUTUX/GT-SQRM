@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: file:; media-src 'self' blob: https: file:; connect-src 'self' https://api.alquran.cloud https://everyayah.com https://fonts.googleapis.com https://fonts.gstatic.com;">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https: file:; media-src 'self' blob: https: file:; connect-src 'self' blob: data: https://api.alquran.cloud https://everyayah.com https://fonts.googleapis.com https://fonts.gstatic.com;">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
 <meta name="description" content="GT-SQR — GnuTux Short Quran Reels — صانع مقاطع القرآن الكريم الاحترافي">
 <meta name="application-name" content="GT-SQRM">
@@ -240,6 +240,27 @@ body.desktop .browser-only{display:none!important}
 /* BATCH */
 #batch-modal .modal{max-width:480px;width:96vw}
 .batch-item{display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:4px}
+/* قائمة مقاطع الخلفية المتعددة */
+.bgv-item{display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:3px;font-size:9.5px}
+.bgv-item .bgv-idx{color:var(--t3);min-width:14px;text-align:center}
+.bgv-item .bgv-name{flex:1;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr}
+.bgv-item .bgv-dur{color:var(--t3);font-size:8.5px}
+.bgv-item button{background:var(--bg4);border:1px solid var(--b1);color:var(--t1);width:20px;height:20px;border-radius:4px;cursor:pointer;font-size:11px;padding:0;display:flex;align-items:center;justify-content:center}
+.bgv-item button:hover{background:var(--p)}
+.bgv-item button:disabled{opacity:.35;cursor:not-allowed}
+.bgv-item button.on{background:var(--pl);color:#000}
+.bgv-vol{width:50px;height:14px;-webkit-appearance:none;appearance:none;background:var(--bg4);border-radius:7px;cursor:pointer;outline:none}
+.bgv-vol::-webkit-slider-thumb{-webkit-appearance:none;width:10px;height:10px;background:var(--p);border-radius:50%;cursor:pointer}
+.bgv-vol::-moz-range-thumb{width:10px;height:10px;background:var(--p);border-radius:50%;cursor:pointer;border:none}
+/* بحث الآيات */
+.vs-item{padding:6px 8px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .15s}
+.vs-item:last-child{border-bottom:none}
+.vs-item:hover{background:var(--bg4)}
+.vs-head{font-size:9px;color:var(--t3);margin-bottom:2px;display:flex;justify-content:space-between}
+.vs-text{font-size:11px;color:var(--t1);line-height:1.5;font-family:'Amiri Quran',serif;direction:rtl;text-align:right}
+.vs-text mark{background:rgba(240,200,66,.35);color:var(--t1);padding:0 2px;border-radius:2px}
+.vs-empty{padding:10px;text-align:center;color:var(--t3);font-size:10px}
+.vs-loading{padding:10px;text-align:center;color:var(--info);font-size:10px}
 .batch-lbl{flex:1;font-size:10px;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .batch-status{font-size:13px;flex-shrink:0}
 .batch-status.done{color:var(--pl)}.batch-status.error{color:var(--danger)}.batch-status.running{color:var(--info)}
@@ -427,7 +448,7 @@ body.offline .offline-badge{display:block}
     </div>
     <div class="logo-text">
       <h1>GT-SQRM</h1>
-      <small id="app-subtitle">GnuTux Short Quran Reels Maker</small>
+      <small id="app-subtitle">GnuTux Short Quran Reels Maker v3.0</small>
     </div>
   </div>
   <div class="hdr-r">
@@ -453,7 +474,7 @@ body.offline .offline-badge{display:block}
       <button class="tab-btn on" data-tab="rec"><span class="ti">📖</span><span>التلاوة</span></button>
       <button class="tab-btn" data-tab="scene"><span class="ti">🎬</span><span>المشهد</span></button>
       <button class="tab-btn" data-tab="txt"><span class="ti">✍️</span><span>النصوص</span></button>
-      <button class="tab-btn" data-tab="mix"><span class="ti">🎵</span><span>المكساج</span></button>
+      <button class="tab-btn" data-tab="mix"><span class="ti">🎵</span><span>المزج</span></button>
       <button class="tab-btn" data-tab="fx"><span class="ti">⚡</span><span>التأثيرات</span></button>
       <button class="tab-btn" data-tab="tpl"><span class="ti">📂</span><span>القوالب</span></button>
       <button class="tab-btn" data-tab="settings"><span class="ti">⚙️</span><span>إعدادات</span></button>
@@ -467,6 +488,14 @@ body.offline .offline-badge{display:block}
       <div class="tp on" id="tab-rec">
         <div class="sec">
           <div class="sec-t">📖 السورة والآيات</div>
+          <div class="fg" style="display:flex;gap:5px;align-items:center">
+            <input type="text" class="fc" id="verse-search-inp" placeholder="🔍 ابحث في الآيات (بدون تشكيل)…" style="flex:1">
+            <button class="btn btn-g bsm" id="verse-search-clear-btn" title="مسح" style="display:none">✕</button>
+          </div>
+          <div id="verse-search-results" style="display:none;max-height:240px;overflow-y:auto;border:1px solid var(--b1);border-radius:var(--r);background:var(--bg1);margin-bottom:6px"></div>
+          <div class="fg" style="margin-bottom:5px">
+            <input type="text" class="fc" id="surah-search" placeholder="🔍 ابحث عن سورة... (بالعربية أو الإنجليزية)">
+          </div>
           <div class="fg"><label class="fl">السورة الكريمة</label><select class="fc" id="surah-sel"></select></div>
           <div class="grid2">
             <div class="fg"><label class="fl">من الآية</label><input type="number" class="fc" id="from-aya" min="1" value="1"></div>
@@ -526,6 +555,7 @@ body.offline .offline-badge{display:block}
             <div class="rc"><input type="radio" name="fmt" id="f1" value="9:16" checked><label for="f1"><span class="ri">📱</span><span>ريلز 9:16</span></label></div>
             <div class="rc"><input type="radio" name="fmt" id="f2" value="16:9"><label for="f2"><span class="ri">💻</span><span>يوتيوب 16:9</span></label></div>
             <div class="rc"><input type="radio" name="fmt" id="f3" value="1:1"><label for="f3"><span class="ri">🟦</span><span>مربع 1:1</span></label></div>
+            <div class="rc"><input type="radio" name="fmt" id="f4" value="4:5"><label for="f4"><span class="ri">📸</span><span>عمودي 4:5</span></label></div>
           </div>
         </div>
 
@@ -537,6 +567,8 @@ body.offline .offline-badge{display:block}
             <div class="sg"><input type="range" min="2" max="25" step=".5" value="6" id="aya-dur"><span class="sv" id="aya-dur-v">6s</span></div>
           </div>
           <div class="fg" style="margin-top:6px"><label class="fl">مدة الانتقال</label><div class="sg"><input type="range" min="0" max="3" step=".1" value=".5" id="trans-dur"><span class="sv" id="trans-dur-v">.5s</span></div></div>
+          <div class="fg" style="margin-top:6px"><label class="fl">🤫 فاصل صمت بين الآيات</label><div class="sg"><input type="range" min="0" max="3" step=".1" value="0" id="aya-gap"><span class="sv" id="aya-gap-v">0s</span></div></div>
+          <span class="note" style="display:block;margin-top:2px">صمت إضافي بعد كل آية قبل بدء التالية — مفيد لإيقاع التلاوة الطبيعي</span>
         </div>
       </div>
 
@@ -565,9 +597,23 @@ body.offline .offline-badge{display:block}
             <div id="bg-img-thumb"><img id="bg-img-preview" alt=""></div>
           </div>
           <div id="bg-vid-ctrl" style="display:none;margin-top:8px">
-            <div class="fu-area"><input type="file" accept="video/*" id="bg-vid-input"><div class="fu-icon">🎥</div><div class="fu-txt">فيديو الخلفية<br><small>MP4 · WebM · MOV · OGG</small></div></div>
+            <div class="fu-area"><input type="file" accept="video/*" id="bg-vid-input" multiple><div class="fu-icon">🎥</div><div class="fu-txt">فيديو خلفية (يمكن رفع عدة مقاطع)<br><small>تُشغَّل بالتسلسل ثم تعود من البداية</small></div></div>
+            <div id="bg-vid-list" style="margin-top:6px"></div>
+            <div class="fg" style="margin-top:5px"><label class="fl">مدة الانتقال السلس بين المقاطع</label>
+              <div class="sg"><input type="range" min="0" max="2000" step="50" value="1000" id="bg-crossfade-ms"><span class="sv" id="bg-crossfade-ms-v">1000ms</span></div>
+            </div>
             <div id="bg-vid-thumb"><video id="bg-vid-preview" muted loop playsinline></video></div>
             <div id="bg-vid-info" style="font-size:9px;color:var(--t3);margin-top:3px"></div>
+            <div class="tgg" style="margin-top:7px">
+              <span class="tgl">✂️ تقطيع نطاق زمني (يُطبَّق على المقطع الأول فقط)</span>
+              <label class="tg"><input type="checkbox" id="bg-vid-trim-on"><span class="tgs"></span></label>
+            </div>
+            <div id="bg-vid-trim-row" style="display:none;margin-top:5px">
+              <div class="grid2">
+                <div class="fg"><label class="fl">من (ث)</label><input type="number" class="fc" id="bg-vid-trim-start" min="0" step="0.1" value="0"></div>
+                <div class="fg"><label class="fl">إلى (ث)</label><input type="number" class="fc" id="bg-vid-trim-end" min="0.1" step="0.1" value="10"></div>
+              </div>
+            </div>
           </div>
         </div>
         <!-- YT-DLP: استيراد من يوتيوب — Electron فقط -->
@@ -678,12 +724,18 @@ body.offline .offline-badge{display:block}
           </div>
         </div>
         <div class="sec">
-          <div class="sec-t">🌈 الفلتر اللوني</div>
-          <div class="rg c4">
+          <div class="sec-t">🌈 أنماط اللون</div>
+          <div class="rg c2">
             <div class="rc"><input type="radio" name="cf" id="cf1" value="none" checked><label for="cf1"><span class="ri">🌿</span><span>طبيعي</span></label></div>
             <div class="rc"><input type="radio" name="cf" id="cf2" value="bw"><label for="cf2"><span class="ri">⬛</span><span>أبيض وأسود</span></label></div>
             <div class="rc"><input type="radio" name="cf" id="cf3" value="warm"><label for="cf3"><span class="ri">🔥</span><span>دافئ</span></label></div>
             <div class="rc"><input type="radio" name="cf" id="cf4" value="cold"><label for="cf4"><span class="ri">❄️</span><span>بارد</span></label></div>
+            <div class="rc"><input type="radio" name="cf" id="cf5" value="sepia"><label for="cf5"><span class="ri">📜</span><span>سيبيا</span></label></div>
+            <div class="rc"><input type="radio" name="cf" id="cf6" value="negative"><label for="cf6"><span class="ri">🌓</span><span>سالب</span></label></div>
+            <div class="rc"><input type="radio" name="cf" id="cf7" value="saturated"><label for="cf7"><span class="ri">🎨</span><span>مشبع</span></label></div>
+            <div class="rc"><input type="radio" name="cf" id="cf8" value="faded"><label for="cf8"><span class="ri">🌫️</span><span>باهت</span></label></div>
+            <div class="rc"><input type="radio" name="cf" id="cf9" value="dreamy"><label for="cf9"><span class="ri">☁️</span><span>حالم</span></label></div>
+            <div class="rc"><input type="radio" name="cf" id="cf10" value="night"><label for="cf10"><span class="ri">🌙</span><span>ليلي</span></label></div>
           </div>
         </div>
         <div class="sec">
@@ -712,6 +764,29 @@ body.offline .offline-badge{display:block}
       <!-- TEXTS -->
       <div class="tp" id="tab-txt">
         <div class="sec">
+          <div class="sec-t">📿 اسم السورة (عنوان علوي)</div>
+          <div class="tgg">
+            <span class="tgl">إظهار اسم السورة في الأعلى</span>
+            <label class="tg"><input type="checkbox" id="sname-on"><span class="tgs"></span></label>
+          </div>
+          <div id="sname-ctrl" style="display:none;padding-top:5px">
+            <div class="grid2">
+              <div class="fg"><label class="fl">الموضع العمودي</label><div class="sg"><input type="range" min="0" max="25" step="0.5" value="5" id="sname-y"><span class="sv" id="sname-y-v">5%</span></div></div>
+              <div class="fg"><label class="fl">حجم الخط</label><div class="sg"><input type="range" min="30" max="200" step="5" value="80" id="sname-size"><span class="sv" id="sname-size-v">80%</span></div></div>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">اللون</label><div class="cpg"><input type="color" id="sname-col" value="#f0c842"></div></div>
+              <div class="fg"><label class="fl">البادئة</label>
+                <select class="fc" id="sname-prefix">
+                  <option value="surah" selected>سُورَةُ [الاسم]</option>
+                  <option value="bare">[الاسم] فقط</option>
+                  <option value="hizb">حِزْبُ [الاسم]</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="sec">
           <div class="sec-t">🖋️ الخط</div>
           <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
             <span style="font-size:9px;color:var(--t3);flex:1">من مجلد <code style="color:var(--al)">fonts/</code></span>
@@ -734,11 +809,15 @@ body.offline .offline-badge{display:block}
           <div class="sec-t">✨ تأثير النص</div>
           <div class="rg c2">
             <div class="rc"><input type="radio" name="te" id="te0" value="none" checked><label for="te0"><span class="ri">○</span><span>بدون</span></label></div>
+            <div class="rc"><input type="radio" name="te" id="te-soft" value="soft"><label for="te-soft"><span class="ri">☁️</span><span>ظل ناعم</span></label></div>
             <div class="rc"><input type="radio" name="te" id="te1" value="glow"><label for="te1"><span class="ri">✨</span><span>توهج ذهبي</span></label></div>
             <div class="rc"><input type="radio" name="te" id="te2" value="neon"><label for="te2"><span class="ri">💡</span><span>نيون</span></label></div>
             <div class="rc"><input type="radio" name="te" id="te3" value="outline"><label for="te3"><span class="ri">⭕</span><span>حدود</span></label></div>
             <div class="rc"><input type="radio" name="te" id="te4" value="shadow3d"><label for="te4"><span class="ri">🎲</span><span>ظل 3D</span></label></div>
             <div class="rc"><input type="radio" name="te" id="te5" value="emboss"><label for="te5"><span class="ri">💎</span><span>منقوش</span></label></div>
+            <div class="rc"><input type="radio" name="te" id="te-carved" value="carved"><label for="te-carved"><span class="ri">🗿</span><span>محفور</span></label></div>
+            <div class="rc"><input type="radio" name="te" id="te-gold" value="gold"><label for="te-gold"><span class="ri">🏅</span><span>ذهبي معدني</span></label></div>
+            <div class="rc"><input type="radio" name="te" id="te-fire" value="fire"><label for="te-fire"><span class="ri">🔥</span><span>ناري</span></label></div>
           </div>
         </div>
         <div class="sec">
@@ -748,6 +827,41 @@ body.offline .offline-badge{display:block}
             <div class="rc"><input type="radio" name="tanim" id="ta1" value="fade" checked><label for="ta1"><span class="ri">🌅</span><span>تلاشي</span></label></div>
             <div class="rc"><input type="radio" name="tanim" id="ta2" value="slide"><label for="ta2"><span class="ri">➡️</span><span>انزلاق</span></label></div>
             <div class="rc"><input type="radio" name="tanim" id="ta3" value="zoom"><label for="ta3"><span class="ri">🔍</span><span>تكبير</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta5" value="drop"><label for="ta5"><span class="ri">⬇️</span><span>سقوط</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta6" value="rise"><label for="ta6"><span class="ri">⬆️</span><span>صعود</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta7" value="blur"><label for="ta7"><span class="ri">🌫️</span><span>ضبابي</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta8" value="glow"><label for="ta8"><span class="ri">✨</span><span>توهج</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta4" value="word"><label for="ta4"><span class="ri">📿</span><span>كلمة-بكلمة</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta9" value="mix"><label for="ta9"><span class="ri">🎲</span><span>مختلط</span></label></div>
+          </div>
+          <div class="mix-anims-ctrl" style="display:none;margin-top:8px;padding:7px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r)">
+            <div class="note" style="margin-bottom:5px">اختر التأثيرات (الترتيب حسب الاختيار):</div>
+            <div class="rg c2">
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="fade"><span class="tgl"><span class="mix-num"></span> 🌅 تلاشي</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="slide"><span class="tgl"><span class="mix-num"></span> ➡️ انزلاق</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="zoom"><span class="tgl"><span class="mix-num"></span> 🔍 تكبير</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="drop"><span class="tgl"><span class="mix-num"></span> ⬇️ سقوط</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="rise"><span class="tgl"><span class="mix-num"></span> ⬆️ صعود</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="blur"><span class="tgl"><span class="mix-num"></span> 🌫️ ضبابي</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="glow"><span class="tgl"><span class="mix-num"></span> ✨ توهج</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="word"><span class="tgl"><span class="mix-num"></span> 📿 كلمة-بكلمة</span></label>
+            </div>
+            <div class="note mix-anims-summary" style="margin-top:5px;color:var(--pl)">— اختر تأثيراً أو أكثر —</div>
+          </div>
+          <div id="word-mode-ctrl" style="display:none;margin-top:6px">
+            <div class="fg"><label class="fl">إيقاع الكلمات</label>
+              <select class="fc" id="word-pace">
+                <option value="auto" selected>تلقائي (مزامنة مع مدة الآية)</option>
+                <option value="0.35">سريع (0.35 ث/كلمة)</option>
+                <option value="0.5">متوسط (0.5 ث/كلمة)</option>
+                <option value="0.75">بطيء (0.75 ث/كلمة)</option>
+                <option value="1.0">بطيء جداً (1 ث/كلمة)</option>
+              </select>
+            </div>
+            <div class="tgg"><span class="tgl">إبقاء الكلمات السابقة معروضة</span><label class="tg"><input type="checkbox" id="word-keep" checked><span class="tgs"></span></label></div>
+            <div class="fg"><label class="fl">مدة تلاشي ظهور الكلمة</label>
+              <div class="sg"><input type="range" min="0" max="500" value="180" id="word-fade-ms"><span class="sv" id="word-fade-ms-v">180ms</span></div>
+            </div>
           </div>
         </div>
         <div class="sec">
@@ -782,6 +896,16 @@ body.offline .offline-badge{display:block}
           <div id="bg-audio-info" style="font-size:9px;color:var(--t3);margin-top:5px"></div>
           <div class="fg" style="margin-top:7px"><label class="fl">مستوى الخلفية</label><div class="sg"><span>🔇</span><input type="range" min="0" max="100" value="20" id="bg-vol"><span>🔊</span><span class="sv" id="bg-vol-v">20%</span></div></div>
           <div class="tgg"><span class="tgl">تكرار صوت الخلفية</span><label class="tg"><input type="checkbox" id="bg-loop" checked><span class="tgs"></span></label></div>
+          <div class="tgg" style="margin-top:5px">
+            <span class="tgl">✂️ تقطيع نطاق صوت الخلفية</span>
+            <label class="tg"><input type="checkbox" id="bg-audio-trim-on"><span class="tgs"></span></label>
+          </div>
+          <div id="bg-audio-trim-row" style="display:none;margin-top:5px">
+            <div class="grid2">
+              <div class="fg"><label class="fl">من (ث)</label><input type="number" class="fc" id="bg-audio-trim-start" min="0" step="0.1" value="0"></div>
+              <div class="fg"><label class="fl">إلى (ث)</label><input type="number" class="fc" id="bg-audio-trim-end" min="0.1" step="0.1" value="30"></div>
+            </div>
+          </div>
         </div>
         <!-- قسم الشعار المخصص -->
         <div class="sec">
@@ -826,12 +950,26 @@ body.offline .offline-badge{display:block}
         <div class="sec">
           <div class="sec-t">📊 الموجات الصوتية</div>
           <div class="tgg"><span class="tgl">تفعيل الموجات</span><label class="tg"><input type="checkbox" id="wave-on" checked><span class="tgs"></span></label></div>
-          <div class="fg" style="margin-top:7px"><label class="fl">شكل الموجة</label><div class="rg c2"><div class="rc"><input type="radio" name="ws" id="ws1" value="bars" checked><label for="ws1"><span class="ri">📊</span><span>أعمدة</span></label></div><div class="rc"><input type="radio" name="ws" id="ws2" value="wave"><label for="ws2"><span class="ri">〰️</span><span>موجة</span></label></div><div class="rc"><input type="radio" name="ws" id="ws3" value="dots"><label for="ws3"><span class="ri">⠿</span><span>نقاط</span></label></div><div class="rc"><input type="radio" name="ws" id="ws4" value="mirror"><label for="ws4"><span class="ri">🪞</span><span>مرآة</span></label></div><div class="rc"><input type="radio" name="ws" id="ws5" value="circle"><label for="ws5"><span class="ri">⭕</span><span>دائرة</span></label></div><div class="rc"><input type="radio" name="ws" id="ws6" value="spectrum"><label for="ws6"><span class="ri">🌈</span><span>طيف</span></label></div></div></div>
+          <div class="fg" style="margin-top:7px"><label class="fl">شكل الموجة</label>
+            <div class="rg c2">
+              <div class="rc"><input type="radio" name="ws" id="ws1" value="bars" checked><label for="ws1"><span class="ri">📊</span><span>أعمدة</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws2" value="wave"><label for="ws2"><span class="ri">〰️</span><span>موجة</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws3" value="dots"><label for="ws3"><span class="ri">⠿</span><span>نقاط</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws4" value="mirror"><label for="ws4"><span class="ri">🪞</span><span>مرآة</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws5" value="circle"><label for="ws5"><span class="ri">⭕</span><span>دائرة</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws6" value="spectrum"><label for="ws6"><span class="ri">🌈</span><span>طيف</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws7" value="rays"><label for="ws7"><span class="ri">☀️</span><span>أشعة</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws8" value="triangles"><label for="ws8"><span class="ri">🔺</span><span>مثلثات</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws9" value="rings"><label for="ws9"><span class="ri">🎯</span><span>حلقات</span></label></div>
+              <div class="rc"><input type="radio" name="ws" id="ws10" value="mountains"><label for="ws10"><span class="ri">⛰️</span><span>جبال</span></label></div>
+            </div>
+          </div>
           <div class="grid2">
             <div class="fg"><label class="fl">اللون</label><div class="cpg"><input type="color" id="wave-col" value="#c9a227"></div></div>
             <div class="fg"><label class="fl">الموضع</label><select class="fc" id="wave-pos"><option value="bottom">أسفل</option><option value="top">أعلى</option></select></div>
           </div>
-          <div class="fg"><label class="fl">الارتفاع</label><div class="sg"><input type="range" min="10" max="90" value="30" id="wave-h"><span class="sv" id="wave-h-v">30px</span></div></div>
+          <div class="fg"><label class="fl">الارتفاع</label><div class="sg"><input type="range" min="10" max="250" value="40" id="wave-h"><span class="sv" id="wave-h-v">40px</span></div></div>
+          <div class="fg"><label class="fl">مضاعف الحساسية</label><div class="sg"><input type="range" min="50" max="300" step="10" value="100" id="wave-gain"><span class="sv" id="wave-gain-v">100%</span></div></div>
         </div>
       </div>
 
@@ -843,6 +981,7 @@ body.offline .offline-badge{display:block}
           <div class="fg" style="padding-top:3px"><div class="sg"><input type="range" min="0" max="100" value="55" id="vig-str"><span class="sv" id="vig-str-v">55%</span></div></div>
           <div class="tgg"><span class="tgl">حبوب فيلم (Grain)</span><label class="tg"><input type="checkbox" id="fx-grain"><span class="tgs"></span></label></div>
           <div class="tgg"><span class="tgl">إطار ذهبي متوهج</span><label class="tg"><input type="checkbox" id="fx-gold"><span class="tgs"></span></label></div>
+          <div class="fg" id="gold-col-row" style="padding-top:3px"><label class="fl">لون الإطار</label><div class="cpg"><input type="color" id="gold-col" value="#f0c842"></div></div>
           <div class="tgg"><span class="tgl">نجوم متلألئة</span><label class="tg"><input type="checkbox" id="fx-stars"><span class="tgs"></span></label></div>
           <div class="tgg"><span class="tgl">أشعة نورانية</span><label class="tg"><input type="checkbox" id="fx-rays"><span class="tgs"></span></label></div>
           <div class="tgg"><span class="tgl">ضبابية بوكيه</span><label class="tg"><input type="checkbox" id="fx-bokeh"><span class="tgs"></span></label></div>
@@ -873,12 +1012,32 @@ body.offline .offline-badge{display:block}
           <div class="tgg"><span class="tgl">Old Film (فيلم قديم)</span><label class="tg"><input type="checkbox" id="fx-oldfilm"><span class="tgs"></span></label></div>
         </div>
         <div class="sec">
-          <div class="sec-t">🔄 انتقالات الآيات</div>
+          <div class="sec-t">🔄 انتقالات الآيات <span class="note" style="font-weight:normal">(مرتبط بـ "ظهور الآيات" في تبويب النصوص)</span></div>
           <div class="rg c2">
-            <div class="rc"><input type="radio" name="vt" id="vt1" value="fade" checked><label for="vt1"><span class="ri">🌅</span><span>تلاشي</span></label></div>
-            <div class="rc"><input type="radio" name="vt" id="vt2" value="slide"><label for="vt2"><span class="ri">➡️</span><span>انزلاق</span></label></div>
-            <div class="rc"><input type="radio" name="vt" id="vt3" value="zoom"><label for="vt3"><span class="ri">🔍</span><span>تكبير</span></label></div>
-            <div class="rc"><input type="radio" name="vt" id="vt4" value="dissolve"><label for="vt4"><span class="ri">💫</span><span>ذوبان</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta0b" value="none"><label for="ta0b"><span class="ri">⚡</span><span>مباشر</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta1b" value="fade"><label for="ta1b"><span class="ri">🌅</span><span>تلاشي</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta2b" value="slide"><label for="ta2b"><span class="ri">➡️</span><span>انزلاق</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta3b" value="zoom"><label for="ta3b"><span class="ri">🔍</span><span>تكبير</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta5b" value="drop"><label for="ta5b"><span class="ri">⬇️</span><span>سقوط</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta6b" value="rise"><label for="ta6b"><span class="ri">⬆️</span><span>صعود</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta7b" value="blur"><label for="ta7b"><span class="ri">🌫️</span><span>ضبابي</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta8b" value="glow"><label for="ta8b"><span class="ri">✨</span><span>توهج</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta4b" value="word"><label for="ta4b"><span class="ri">📿</span><span>كلمة-بكلمة</span></label></div>
+            <div class="rc"><input type="radio" name="tanim" id="ta9b" value="mix"><label for="ta9b"><span class="ri">🎲</span><span>مختلط</span></label></div>
+          </div>
+          <div class="mix-anims-ctrl" style="display:none;margin-top:8px;padding:7px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r)">
+            <div class="note" style="margin-bottom:5px">اختر التأثيرات (الترتيب حسب الاختيار):</div>
+            <div class="rg c2">
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="fade"><span class="tgl"><span class="mix-num"></span> 🌅 تلاشي</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="slide"><span class="tgl"><span class="mix-num"></span> ➡️ انزلاق</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="zoom"><span class="tgl"><span class="mix-num"></span> 🔍 تكبير</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="drop"><span class="tgl"><span class="mix-num"></span> ⬇️ سقوط</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="rise"><span class="tgl"><span class="mix-num"></span> ⬆️ صعود</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="blur"><span class="tgl"><span class="mix-num"></span> 🌫️ ضبابي</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="glow"><span class="tgl"><span class="mix-num"></span> ✨ توهج</span></label>
+              <label class="tgg" style="cursor:pointer"><input type="checkbox" class="mix-anim" value="word"><span class="tgl"><span class="mix-num"></span> 📿 كلمة-بكلمة</span></label>
+            </div>
+            <div class="note mix-anims-summary" style="margin-top:5px;color:var(--pl)">— اختر تأثيراً أو أكثر —</div>
           </div>
         </div>
         <div class="sec">
@@ -940,6 +1099,32 @@ body.offline .offline-badge{display:block}
 
       <!-- SETTINGS -->
       <div class="tp" id="tab-settings">
+        <div class="sec">
+          <div class="sec-t">🎯 قالب جاهز للمنصة</div>
+          <div class="fg">
+            <select class="fc" id="preset-sel">
+              <option value="">— اختر قالباً —</option>
+              <optgroup label="📱 ريلز / شورتس / تيك توك (9:16)">
+                <option value="reel-fhd">Reels/Shorts/TikTok — 1080×1920 Full HD</option>
+                <option value="reel-hd">Reels — 720×1280 سريع</option>
+              </optgroup>
+              <optgroup label="💻 يوتيوب أفقي (16:9)">
+                <option value="yt-fhd">YouTube — 1920×1080 Full HD</option>
+                <option value="yt-hd">YouTube — 1280×720 HD</option>
+              </optgroup>
+              <optgroup label="🟦 انستجرام مربع (1:1)">
+                <option value="ig-sq">Instagram Square — 1080×1080</option>
+              </optgroup>
+              <optgroup label="📸 انستجرام عمودي (4:5)">
+                <option value="ig-port">Instagram Portrait — 1080×1350</option>
+              </optgroup>
+              <optgroup label="🎬 سينمائي">
+                <option value="cinema">Cinema 21:9 — 2560×1080</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="note">القالب يضبط الأبعاد + FPS + جودة التصدير دفعةً واحدة. يُمكن تعديل القيم يدوياً بعدها.</div>
+        </div>
         <div class="sec">
           <div class="sec-t">🎬 جودة التصدير</div>
           <div class="fg"><label class="fl">دقة الفيديو</label>
@@ -1025,8 +1210,10 @@ body.offline .offline-badge{display:block}
           </div>
           <div class="fg"><label class="fl">سرعة الترميز</label>
             <select class="fc" id="export-preset">
+              <option value="ultrafast">ultrafast (الأسرع)</option>
+              <option value="veryfast" selected>veryfast (سريع جداً - موصى به)</option>
               <option value="fast">fast (سريع)</option>
-              <option value="medium" selected>medium (متوازن)</option>
+              <option value="medium">medium (متوازن)</option>
               <option value="slow">slow (جودة عالية)</option>
             </select>
           </div>
@@ -1061,7 +1248,7 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">📋 المشروع</div>
-          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">1.1.0</span></div>
+          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.0.0</span></div>
           <div class="info-row"><span class="info-k">المطور</span><span class="info-v"><a href="https://github.com/SalehGnuTux" target="_blank">@SalehGnuTux</a></span></div>
           <div class="info-row"><span class="info-k">المستودع</span><span class="info-v"><a href="https://github.com/SalehGnuTux/GT-SQRM" target="_blank">GitHub/GT-SQRM</a></span></div>
           <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv3
@@ -1160,6 +1347,8 @@ body.offline .offline-badge{display:block}
   </div>
 </div>
 
+<script src="export-engine.js"></script>
+<script src="ytdlp-panel.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 {
   "name": "gt-sqrm",
-  "version": "1.0.0",
-  "description": "GnuTux Short Quran Reels Maker — صانع ريلز القرآن الكريم لنظام Linux",
+  "version": "3.0.0",
+  "description": "GnuTux Short Quran Reels Maker v3.0 — محرّك تصدير حتمي V2 + بحث الآيات + قرآن محلي + خلفيات متعددة بانتقالات + كلمة-بكلمة + 16 خطاً + 10 رسوم متحركة + 9 أنماط لون + 9 أشكال دبدبات + قوالب منصات + اسم السورة",
   "author": "SalehGNUTUX <https://github.com/SalehGNUTUX>",
   "license": "GPL-2.0",
   "homepage": "https://github.com/SalehGNUTUX/GT-SQRM",
@@ -9,8 +9,12 @@
   "scripts": {
     "start": "electron .",
     "dev": "NODE_ENV=development electron .",
-    "build": "electron-builder --linux AppImage",
-    "build:deb": "electron-builder --linux deb",
+    "build": "bash ./scripts/build-all.sh appimage",
+    "build:deb": "bash ./scripts/build-all.sh deb",
+    "build:rpm": "bash ./scripts/build-all.sh rpm",
+    "build:all": "bash ./scripts/build-all.sh all",
+    "build:clean": "bash ./scripts/build-all.sh clean",
+    "build:raw": "electron-builder --linux AppImage deb rpm",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -27,10 +31,13 @@
     "linux": {
       "target": [
         "AppImage",
-        "deb"
+        "deb",
+        "rpm"
       ],
+      "synopsis": "GnuTux Short Quran Reels Maker",
+      "maintainer": "SalehGNUTUX <https://github.com/SalehGNUTUX>",
       "category": "AudioVideo",
-      "icon": "GT-SQRM-icons/electron",
+      "icon": "GT-SQRM-icons/GT-SQRM-icon-original.png",
       "desktop": {
         "Name": "GT-SQRM",
         "Comment": "GnuTux Short Quran Reels Maker",

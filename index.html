@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GT-SQRM - GnuTux Short Quran Reels Maker</title>
-  <meta name="description" content="GT-SQRM - تطبيق سطح المكتب لإنشاء ريلز القرآن الكريم بجودة احترافية لنظام Linux">
+  <title>GT-SQRM &amp; GT-SQR v3.0 — صانع ريلز القرآن الكريم</title>
+  <meta name="description" content="GT-SQRM v3.0 لسطح المكتب (Linux) و GT-SQR للمتصفح (PWA) — صانع ريلز قرآنية بجودة احترافية: محرّك تصدير حتمي، بحث آيات، 16 خطاً، 10 أنماط ظهور، 9 أنماط ألوان، 9 أشكال موجة صوتية، اسم السورة، خلفيات متعددة بانتقالات.">
+  <meta property="og:title" content="GT-SQRM &amp; GT-SQR v3.0 — صانع ريلز القرآن الكريم">
+  <meta property="og:description" content="نسختان متطابقتان: سطح المكتب (AppImage/DEB/RPM) + الويب (PWA). محرّك تصدير حتمي بدون تقطّع.">
+  <meta property="og:image" content="https://raw.githubusercontent.com/SalehGNUTUX/GT-SQRM/main/screenshot/Screenshot_GT-SQRM_v3.png">
+  <meta property="og:type" content="website">
   <meta name="theme-color" content="#0a5c36" media="(prefers-color-scheme: dark)">
   <meta name="theme-color" content="#1a8a52" media="(prefers-color-scheme: light)">
 
@@ -514,6 +518,205 @@
       font-size: 14px;
     }
 
+    /* ===== الأزرار العريضة الرئيسية (Hero CTA) ===== */
+    .hero-cta {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      max-width: 820px;
+      margin: 0 auto;
+    }
+    .hero-btn {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 20px 28px;
+      border-radius: var(--rl);
+      text-decoration: none;
+      transition: var(--tr);
+      box-shadow: var(--sh);
+      text-align: right;
+      border: 2px solid transparent;
+    }
+    .hero-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 32px rgba(0,0,0,.4);
+    }
+    .hero-btn-icon {
+      font-size: 42px;
+      flex-shrink: 0;
+    }
+    .hero-btn-text {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .hero-btn-text strong {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: .5px;
+    }
+    .hero-btn-text small {
+      font-size: 13px;
+      opacity: .85;
+      font-weight: 500;
+    }
+    .hero-btn-web {
+      background: linear-gradient(135deg, var(--pd), var(--p), var(--pl));
+      color: #fff;
+      border-color: var(--pl);
+    }
+    .hero-btn-web:hover {
+      border-color: var(--al);
+    }
+    .hero-btn-desktop {
+      background: linear-gradient(135deg, var(--ad), var(--a), var(--al));
+      color: #1a1a1a;
+      border-color: var(--al);
+    }
+    .hero-btn-desktop:hover {
+      border-color: var(--pl);
+    }
+
+    /* ===== لقطات الشاشة ===== */
+    .screenshots-grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 22px;
+    }
+    .shot {
+      background: var(--card-bg);
+      border: var(--border-light);
+      border-radius: var(--rl);
+      overflow: hidden;
+      transition: var(--tr);
+      display: flex;
+      flex-direction: column;
+    }
+    .shot:hover {
+      transform: translateY(-4px);
+      border-color: var(--pl);
+      box-shadow: var(--sh);
+    }
+    .shot-wide {
+      grid-column: span 6;
+    }
+    .shot-phone {
+      grid-column: span 12;
+      max-width: 380px;
+      margin: 0 auto;
+    }
+    .shot a {
+      display: block;
+      line-height: 0;
+      background: var(--bg0);
+    }
+    .shot img {
+      width: 100%;
+      height: auto;
+      display: block;
+      transition: transform .3s ease;
+    }
+    .shot:hover img {
+      transform: scale(1.02);
+    }
+    .shot figcaption {
+      padding: 16px 20px;
+      border-top: var(--border-light);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .shot figcaption strong {
+      color: var(--al);
+      font-size: 15px;
+    }
+    .shot figcaption span {
+      color: var(--text-secondary);
+      font-size: 13px;
+    }
+    @media (max-width: 900px) {
+      .shot-wide { grid-column: span 12; }
+    }
+
+    /* ===== بطاقات التحميل العريضة (سطح المكتب) ===== */
+    .download-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 22px;
+    }
+    .dl-card {
+      background: var(--card-bg);
+      border: var(--border-light);
+      border-radius: var(--rl);
+      padding: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: var(--tr);
+    }
+    .dl-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--pl);
+      box-shadow: var(--sh);
+    }
+    .dl-card-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .dl-card-icon {
+      font-size: 32px;
+    }
+    .dl-card h3 {
+      color: var(--al);
+      font-size: 18px;
+      margin: 0;
+    }
+    .dl-card-meta {
+      color: var(--t3);
+      font-size: 12px;
+      margin-top: -4px;
+    }
+    .dl-card-desc {
+      color: var(--text-secondary);
+      font-size: 14px;
+      flex: 1;
+    }
+    .dl-card-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      background: linear-gradient(135deg, var(--pd), var(--pl));
+      color: #fff;
+      border-radius: var(--r);
+      font-weight: 700;
+      text-decoration: none;
+      transition: var(--tr);
+    }
+    .dl-card-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 14px rgba(10,92,54,.45);
+    }
+    .dl-card-sha {
+      font-family: monospace;
+      font-size: 10px;
+      color: var(--t4);
+      direction: ltr;
+      text-align: left;
+      background: var(--bg0);
+      padding: 6px 10px;
+      border-radius: var(--r);
+      border: var(--border-light);
+      word-break: break-all;
+      overflow-wrap: anywhere;
+    }
+    .dl-card-sha b {
+      color: var(--t3);
+    }
+
     /* ===== روابط التحميل المباشرة ===== */
     .download-link {
       display: inline-flex;
@@ -606,8 +809,8 @@
 
   <!-- أزرار التنزيل على اليسار -->
   <div class="header-right">
-    <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" download>📥 AppImage</a>
-    <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-secondary" download>📦 Deb</a>
+    <a href="https://salehgnutux.github.io/GT-SQR/" class="btn btn-primary" target="_blank" rel="noopener">🌐 جرّب نسخة الويب</a>
+    <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/latest" class="btn btn-secondary">⬇️ تحميل لينكس</a>
   </div>
 </header>
 
@@ -615,57 +818,118 @@
   <!-- ===== قسم الترحيب ===== -->
   <div class="container">
     <div class="section">
-      <div style="text-align: center; max-width: 800px; margin: 0 auto;">
-        <h2 style="font-size: 36px; margin-bottom: 16px; background: linear-gradient(135deg, var(--a), var(--pl)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GT-SQRM</h2>
-        <p style="font-size: 18px; color: var(--t2); margin-bottom: 30px;">
-          تطبيق سطح المكتب لإنشاء ريلز القرآن الكريم بجودة احترافية<br>
-          <span style="font-size: 16px;">حصرياً لنظام GNU/Linux</span>
+      <div style="text-align: center; max-width: 900px; margin: 0 auto;">
+        <div style="display:inline-block;padding:4px 14px;border:1px solid var(--a);border-radius:20px;color:var(--al);font-size:13px;font-weight:700;margin-bottom:18px;letter-spacing:1px;">🎉 الإصدار v3.0.0 الآن متاح</div>
+        <h2 style="font-size: 42px; margin-bottom: 16px; background: linear-gradient(135deg, var(--a), var(--pl)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">GT-SQRM &amp; GT-SQR</h2>
+        <p style="font-size: 19px; color: var(--t2); margin-bottom: 14px;">
+          صانع ريلز القرآن الكريم بجودة احترافية — بنسختين متطابقتين الميزات
         </p>
-        <div style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;">
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.AppImage" class="btn btn-primary" style="padding: 12px 30px;" download>⬇️ تحميل AppImage</a>
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.deb" class="btn btn-secondary" style="padding: 12px 30px;" download>📦 تحميل Deb</a>
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM" class="btn btn-outline" style="padding: 12px 30px;">⭐ GitHub</a>
+        <p style="font-size: 15px; color: var(--t3); margin-bottom: 36px; max-width:700px; margin-inline:auto;">
+          محرّك تصدير حتمي بدون تقطّع · بحث آيات بتطبيع التشكيل · القرآن الكامل دون اتصال · 16 خطاً قرآنياً · 10 أنماط ظهور · 9 أنماط ألوان · 9 أشكال موجة صوتية · خلفيات متعددة بانتقالات · اسم السورة · قوالب منصات
+        </p>
+
+        <!-- الأزرار العريضة الرئيسية -->
+        <div class="hero-cta">
+          <a href="https://salehgnutux.github.io/GT-SQR/" class="hero-btn hero-btn-web" target="_blank" rel="noopener">
+            <span class="hero-btn-icon">🌐</span>
+            <span class="hero-btn-text">
+              <strong>جرّب نسخة الويب الآن</strong>
+              <small>GT-SQR — يعمل مباشرة في المتصفح (PWA) · بدون تثبيت</small>
+            </span>
+          </a>
+          <a href="#downloads" class="hero-btn hero-btn-desktop">
+            <span class="hero-btn-icon">🐧</span>
+            <span class="hero-btn-text">
+              <strong>تحميل نسخة GNU/Linux</strong>
+              <small>GT-SQRM — AppImage · DEB · RPM</small>
+            </span>
+          </a>
+        </div>
+
+        <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-top:28px;">
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM" class="btn btn-outline" target="_blank" rel="noopener" style="padding:10px 22px;">⭐ GitHub — سطح المكتب</a>
+          <a href="https://github.com/SalehGNUTUX/GT-SQR" class="btn btn-outline" target="_blank" rel="noopener" style="padding:10px 22px;">🌐 GitHub — الويب</a>
         </div>
       </div>
     </div>
 
-    <!-- ===== مقارنة مع نسخة المتصفح ===== -->
+    <!-- ===== لقطات الشاشة ===== -->
     <div class="section">
       <div class="section-title">
-        <span class="icon">⚡</span>
-        <span>الفرق عن GT-SQR (نسخة المتصفح)</span>
+        <span class="icon">🖼️</span>
+        <span>لقطات الشاشة</span>
       </div>
+      <div class="screenshots-grid">
+        <figure class="shot shot-wide">
+          <a href="screenshot/Screenshot_GT-SQRM_v3.png" target="_blank" rel="noopener">
+            <img src="screenshot/Screenshot_GT-SQRM_v3.png" alt="GT-SQRM v3.0 — نسخة سطح المكتب">
+          </a>
+          <figcaption>
+            <strong>🐧 GT-SQRM v3.0 — سطح المكتب (GNU/Linux)</strong>
+            <span>المحرّك الحتمي V2 عبر ffmpeg مع تبويب التلاوة</span>
+          </figcaption>
+        </figure>
+        <figure class="shot shot-wide">
+          <a href="screenshot/Screenshot_GT-SQR_V3.png" target="_blank" rel="noopener">
+            <img src="screenshot/Screenshot_GT-SQR_V3.png" alt="GT-SQR v3.0 — نسخة الويب على الحاسوب">
+          </a>
+          <figcaption>
+            <strong>🌐 GT-SQR v3.0 — الويب على الحاسوب</strong>
+            <span>محرّك WebCodecs الحتمي + 16 خطاً قرآنياً + كل المزايا</span>
+          </figcaption>
+        </figure>
+        <figure class="shot shot-phone">
+          <a href="screenshot/Screenshot_GT-SQR_V3_phone.png" target="_blank" rel="noopener">
+            <img src="screenshot/Screenshot_GT-SQR_V3_phone.png" alt="GT-SQR v3.0 — نسخة الويب على الهاتف">
+          </a>
+          <figcaption>
+            <strong>📱 GT-SQR v3.0 — الويب على الهاتف</strong>
+            <span>واجهة محمولة بـ Bottom Sheet · 3 أوضاع عرض</span>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <!-- ===== مقارنة بين النسختين ===== -->
+    <div class="section">
+      <div class="section-title">
+        <span class="icon">⚖️</span>
+        <span>أي نسخة أختار؟</span>
+      </div>
+      <p style="color:var(--t2);margin-bottom:20px;">النسختان متطابقتان في معظم المزايا منذ v3.0. الفروق الباقية تخدم خصائص بيئة كل واحدة.</p>
       <div class="comparison-grid">
         <div class="card">
           <div class="card-header">
             <span class="card-icon">🌐</span>
-            <h3 class="card-title">GT-SQR (متصفح)</h3>
+            <h3 class="card-title">GT-SQR — الويب (PWA)</h3>
           </div>
           <ul class="card-list">
-            <li><span class="cross">✕</span> MediaRecorder (محدود)</li>
-            <li><span class="check">✓</span> WebM · MP4 فقط</li>
-            <li><span class="cross">✕</span> محدودة بقيود المتصفح</li>
-            <li><span class="cross">✕</span> رفع يدوي فقط</li>
-            <li><span class="cross">✕</span> تحتاج HTTP server</li>
-            <li><span class="cross">✕</span> قيود CORS</li>
-            <li><span class="cross">✕</span> مقيّد</li>
+            <li><span class="check">✓</span> <strong>محرّك WebCodecs الحتمي</strong> — لا تقطّع</li>
+            <li><span class="check">✓</span> يعمل فوراً في المتصفح — بدون تثبيت</li>
+            <li><span class="check">✓</span> PWA قابل للتثبيت كتطبيق</li>
+            <li><span class="check">✓</span> يدعم الهاتف (3 أوضاع عرض)</li>
+            <li><span class="check">✓</span> كل مزايا v3 الأساسية</li>
+            <li><span class="cross">✕</span> لا استيراد yt-dlp / wget</li>
+            <li><span class="cross">✕</span> لا تصدير دفعي</li>
           </ul>
+          <a href="https://salehgnutux.github.io/GT-SQR/" target="_blank" rel="noopener" class="btn btn-primary" style="margin-top:14px;display:inline-block;padding:10px 20px;">🌐 جرّب الآن</a>
         </div>
         <div class="card">
           <div class="card-header">
             <span class="card-icon">🐧</span>
-            <h3 class="card-title">GT-SQRM (Linux)</h3>
+            <h3 class="card-title">GT-SQRM — سطح المكتب (Linux)</h3>
           </div>
           <ul class="card-list">
-            <li><span class="check">✓</span> <strong>ffmpeg كامل</strong></li>
-            <li><span class="check">✓</span> H.264 · H.265 · VP9 · <strong>AV1</strong></li>
-            <li><span class="check">✓</span> <strong>CRF كامل — لا سقف للجودة</strong></li>
-            <li><span class="check">✓</span> <strong>yt-dlp من يوتيوب</strong></li>
-            <li><span class="check">✓</span> مسار ملف مباشر</li>
-            <li><span class="check">✓</span> لا قيود</li>
-            <li><span class="check">✓</span> <strong>حرية كاملة</strong></li>
+            <li><span class="check">✓</span> <strong>محرّك ffmpeg الحتمي</strong> — أداء أعلى</li>
+            <li><span class="check">✓</span> اختيار CRF/preset/كوديك يدوياً</li>
+            <li><span class="check">✓</span> <strong>استيراد من يوتيوب عبر yt-dlp</strong></li>
+            <li><span class="check">✓</span> wget / aria2c للروابط المباشرة</li>
+            <li><span class="check">✓</span> <strong>تصدير دفعي</strong> لقائمة سور</li>
+            <li><span class="check">✓</span> ffmpeg-log في الواجهة</li>
+            <li><span class="check">✓</span> AppImage · DEB · RPM</li>
           </ul>
-          <div class="badge">موصى به</div>
+          <a href="#downloads" class="btn btn-secondary" style="margin-top:14px;display:inline-block;padding:10px 20px;">⬇️ حمّل الآن</a>
+          <div class="badge">للمحترفين</div>
         </div>
       </div>
     </div>
@@ -674,58 +938,187 @@
     <div class="section">
       <div class="section-title">
         <span class="icon">✨</span>
-        <span>المميزات الرئيسية</span>
+        <span>مميزات v3.0 الرئيسية</span>
       </div>
       <div class="features-grid">
         <div class="feature-item">
           <div class="feature-icon">🎬</div>
-          <h3 class="feature-title">تصدير احترافي</h3>
-          <p class="feature-desc">محرك ffmpeg مدمج لتصدير الفيديو بأعلى جودة ممكنة. صيغ متعددة: MP4 (H.264/H.265) · WebM (VP9) · MKV (AV1).</p>
+          <h3 class="feature-title">محرّك تصدير حتمي</h3>
+          <p class="feature-desc">إطار-بإطار عند <code>t = i/FPS</code> بالضبط — لا تقطّع نهائياً. ffmpeg على سطح المكتب، WebCodecs في الويب مع fallback تلقائي للكوديك.</p>
         </div>
         <div class="feature-item">
-          <div class="feature-icon">🖼️</div>
-          <h3 class="feature-title">خلفيات متنوعة</h3>
-          <p class="feature-desc">تدرجات لونية، صور ثابتة، فيديوهات خلفية مع إمكانية التحكم بالحركة، واستيراد مباشر من يوتيوب باستخدام yt-dlp.</p>
+          <div class="feature-icon">📿</div>
+          <h3 class="feature-title">اسم السورة في الأعلى</h3>
+          <p class="feature-desc">قسم مستقل في أعلى تبويب النصوص: الموضع + الحجم + اللون + 3 صياغات (سُورَةُ [الاسم] · حِزْبُ [الاسم] · الاسم فقط).</p>
         </div>
         <div class="feature-item">
-          <div class="feature-icon">🎤</div>
-          <h3 class="feature-title">أكثر من 30 قارئ</h3>
-          <p class="feature-desc">دعم لأشهر القراء مع إمكانية إضافة قراء جدد. الترجمة والتفسير متوفرة بلغات متعددة.</p>
+          <div class="feature-icon">🎭</div>
+          <h3 class="feature-title">10 أنماط ظهور + المختلط</h3>
+          <p class="feature-desc">مباشر · تلاشي · انزلاق · تكبير · سقوط · صعود · ضبابي · دوران · ارتداد · يمين-يسار. وضع مختلط يدوّر الأنماط بترتيب ثابت حسب رقم الآية.</p>
         </div>
         <div class="feature-item">
-          <div class="feature-icon">✨</div>
-          <h3 class="feature-title">تأثيرات بصرية</h3>
-          <p class="feature-desc">فلترات لونية، زخارف إسلامية، تأثيرات متقدمة: Pixelate، Mosaic، Ripple، Wave، Swirl، Kaleidoscope، Glitch، Old Film.</p>
+          <div class="feature-icon">🎨</div>
+          <h3 class="feature-title">9 أنماط ألوان</h3>
+          <p class="feature-desc">عادي · دافئ · بارد · ليلي · صحراء · سينمائي · أبيض-أسود · Sepia · بنفسجي رمضاني. تطبيق per-pixel ضمن خط الرسم الموحّد.</p>
         </div>
         <div class="feature-item">
           <div class="feature-icon">🔊</div>
-          <h3 class="feature-title">نظام صوتي متطور</h3>
-          <p class="feature-desc">فصل تام بين صوت المعاينة والتصدير. موجات صوتية متحركة مع 6 أشكال مختلفة.</p>
+          <h3 class="feature-title">9 أشكال موجة صوتية</h3>
+          <p class="feature-desc">bars · line · area · dots · mirror · radial · blocks · pulse · wave3D. مع مضاعف حدّة حتى 300% وحساب طيف عبر FFT في التصدير.</p>
         </div>
         <div class="feature-item">
-          <div class="feature-icon">📦</div>
-          <h3 class="feature-title">تصدير دفعات</h3>
-          <p class="feature-desc">إنشاء قائمة بمشاريع متعددة وتصديرها تباعاً. حفظ القوالب واسترجاعها لاحقاً.</p>
+          <div class="feature-icon">🎥</div>
+          <h3 class="feature-title">خلفيات متعددة + crossfade</h3>
+          <p class="feature-desc">قائمة تشغيل قابلة لإعادة الترتيب، انتقال <code>xfade</code> سلس 500ms، صوت per-clip مستقل لكل مقطع (تشغيل/كتم/مستوى).</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔍</div>
+          <h3 class="feature-title">بحث بتطبيع التشكيل</h3>
+          <p class="feature-desc">"الفاتحه" تطابق "الفَاتِحَة"، "الرحمن" تطابق "الرَّحْمَٰن". بحث في 6,236 آية بسرعة فورية مع تظليل ذهبي.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📚</div>
+          <h3 class="feature-title">يعمل دون اتصال</h3>
+          <p class="feature-desc">القرآن الكامل (~1.5MB) محفوظ محلياً + الترجمات في cache + 30+ قارئ. PWA كاملة في الويب، Electron محلي في سطح المكتب.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🔤</div>
+          <h3 class="feature-title">16 خط قرآني</h3>
+          <p class="feature-desc">Amiri Quran · Uthmanic Hafs · Scheherazade New · Lateef · Harmattan · Reem Kufi · Aref Ruqaa · Markazi Text + رفع خطوط مخصصة.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📝</div>
+          <h3 class="feature-title">عرض كلمة-بكلمة</h3>
+          <p class="feature-desc">كشف الكلمات تتابعياً مع التلاوة. 3 سرعات + مدّة تلاشي قابلة للضبط + الحفاظ على تخطيط wrapText بدون قفز.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📥</div>
+          <h3 class="feature-title">استيراد yt-dlp <small>(سطح المكتب)</small></h3>
+          <p class="feature-desc">تنزيل من يوتيوب ومئات المواقع + wget/aria2c للروابط المباشرة + تقطيع زمني عند التنزيل + مجلد حفظ دائم.</p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🚀</div>
+          <h3 class="feature-title">قوالب منصات + قوالب مستخدم</h3>
+          <p class="feature-desc">Reels · Shorts · TikTok · YouTube · Instagram Square/Portrait · Cinema. حفظ قوالبك الخاصة في localStorage واستردادها بنقرة.</p>
         </div>
       </div>
     </div>
 
-    <!-- ===== الإصدارات ===== -->
+    <!-- ===== التحميل المباشر (3 حزم) ===== -->
+    <div class="section" id="downloads">
+      <div class="section-title">
+        <span class="icon">⬇️</span>
+        <span>تحميل GT-SQRM v3.0.0 — GNU/Linux</span>
+      </div>
+      <p style="color:var(--t2);margin-bottom:24px;">اختر صيغة الحزمة المناسبة لتوزيعتك. كل الحزم x86_64 وتعمل دون اتصال.</p>
+      <div class="download-cards">
+
+        <!-- AppImage -->
+        <div class="dl-card">
+          <div class="dl-card-head">
+            <span class="dl-card-icon">🚀</span>
+            <div>
+              <h3>AppImage</h3>
+              <div class="dl-card-meta">173 MB · يعمل على كل توزيعات Linux</div>
+            </div>
+          </div>
+          <p class="dl-card-desc">ملف تنفيذي مستقل لا يحتاج تثبيت. مناسب لـ Arch / Debian / Fedora / Ubuntu / openSUSE وأي توزيعة حديثة.</p>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-3.0.0/GT-SQRM-3.0.0.AppImage" class="dl-card-btn" download>⬇️ تحميل AppImage</a>
+          <div class="dl-card-sha"><b>SHA-256:</b> 58ece61dd311b68d096066534782c40b350c688d056ddddf628ff39a8091875d</div>
+          <div class="code-block" style="margin:6px 0 0 0;font-size:12px;">
+chmod +x GT-SQRM-3.0.0.AppImage<br>
+./GT-SQRM-3.0.0.AppImage
+          </div>
+        </div>
+
+        <!-- DEB -->
+        <div class="dl-card">
+          <div class="dl-card-head">
+            <span class="dl-card-icon">📦</span>
+            <div>
+              <h3>حزمة DEB</h3>
+              <div class="dl-card-meta">128 MB · Debian / Ubuntu / Mint</div>
+            </div>
+          </div>
+          <p class="dl-card-desc">حزمة <code>.deb</code> رسمية. يُدمَج التطبيق في قائمة البرامج تلقائياً مع الأيقونة وأيقونة سطح المكتب.</p>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-3.0.0/gt-sqrm_3.0.0_amd64.deb" class="dl-card-btn" download>⬇️ تحميل DEB</a>
+          <div class="dl-card-sha"><b>SHA-256:</b> 3163cd8a6b1859bd3a3faa2f66401a0758ec8819b84b74b4010db61cb4b89320</div>
+          <div class="code-block" style="margin:6px 0 0 0;font-size:12px;">
+sudo dpkg -i gt-sqrm_3.0.0_amd64.deb<br>
+sudo apt --fix-broken install
+          </div>
+        </div>
+
+        <!-- RPM -->
+        <div class="dl-card">
+          <div class="dl-card-head">
+            <span class="dl-card-icon">🎩</span>
+            <div>
+              <h3>حزمة RPM</h3>
+              <div class="dl-card-meta">171 MB · Fedora / RHEL / openSUSE</div>
+            </div>
+          </div>
+          <p class="dl-card-desc">حزمة <code>.rpm</code> رسمية. تعمل على Fedora 38+ و RHEL 9+ و openSUSE Tumbleweed/Leap.</p>
+          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-3.0.0/gt-sqrm-3.0.0-2.x86_64.rpm" class="dl-card-btn" download>⬇️ تحميل RPM</a>
+          <div class="dl-card-sha"><b>SHA-256:</b> 772326f2e8a922e29c6285c6141014d889e86a06d8d3e4419a6f2125456d3fde</div>
+          <div class="code-block" style="margin:6px 0 0 0;font-size:12px;">
+sudo dnf install ./gt-sqrm-3.0.0-2.x86_64.rpm<br>
+# أو: sudo rpm -i ...
+          </div>
+        </div>
+
+      </div>
+
+      <!-- التحقق من التوقيع -->
+      <div class="card" style="margin-top:24px;">
+        <h3 style="color:var(--al);margin-bottom:10px;">🔐 التحقق من سلامة الملف</h3>
+        <p style="color:var(--text-secondary);font-size:14px;margin-bottom:12px;">قبل التشغيل، تحقق من أن المجموع الاختباري SHA-256 يطابق المنشور أعلاه:</p>
+        <div class="code-block">sha256sum GT-SQRM-3.0.0.AppImage</div>
+      </div>
+    </div>
+
+    <!-- ===== سجل الإصدارات ===== -->
     <div class="section">
       <div class="section-title">
-        <span class="icon">📦</span>
-        <span>الإصدارات</span>
+        <span class="icon">📜</span>
+        <span>سجل الإصدارات</span>
       </div>
       <div class="releases-table">
+        <div class="release-row">
+          <div class="release-version">v3.0.0</div>
+          <div class="release-notes">
+            <ul>
+              <li>🎉 إصدار رئيسي — مزامنة كاملة بين النسختين (سطح المكتب + الويب)</li>
+              <li>📿 اسم السورة في الأعلى مع 3 صياغات للبادئة</li>
+              <li>🎭 10 أنماط ظهور للآيات + وضع مختلط</li>
+              <li>🎨 9 أنماط ألوان (إعادة تسمية "color filter" → "أنماط الألوان")</li>
+              <li>🔊 9 أشكال موجة صوتية + مضاعف حدّة 300%</li>
+              <li>🎥 صوت per-clip لكل خلفية فيديو</li>
+              <li>📦 تحزيم ثلاثي: AppImage + DEB + RPM</li>
+              <li>🛠️ توحيد بادئة localStorage + إصلاح init order + إصلاح تكرار "سورة"</li>
+            </ul>
+          </div>
+          <div class="release-date">مايو 2026</div>
+        </div>
+        <div class="release-row">
+          <div class="release-version">v2.0.0</div>
+          <div class="release-notes">
+            <ul>
+              <li>🎬 محرّك تصدير V2 الحتمي (frame-pipe عبر ffmpeg / WebCodecs)</li>
+              <li>🔍 بحث الآيات والسور بتطبيع التشكيل (6,236 آية)</li>
+              <li>📚 القرآن كاملاً محلياً للعمل دون اتصال</li>
+              <li>📝 عرض كلمة-بكلمة + خلفيات متعددة + crossfade</li>
+              <li>🔤 16 خطاً عربياً قرآنياً</li>
+            </ul>
+          </div>
+          <div class="release-date">مايو 2026</div>
+        </div>
         <div class="release-row">
           <div class="release-version">v1.1.0</div>
           <div class="release-notes">
             <ul>
-              <li>✅ إصلاح مشكلة مجلد الحفظ الدائم</li>
-              <li>✅ تحسين نظام كتم الصوت (فصل كتم المعاينة عن التصدير)</li>
-              <li>✅ تحسين القائمة السياقية (نسخ النصوص والروابط)</li>
-              <li>✅ إعادة ترتيب أزرار التالي/السابقة للواجهة العربية</li>
-              <li>✅ إضافة أيقونة رسمية لقسم "حول"</li>
+              <li>إصلاح مجلد الحفظ الدائم + فصل كتم المعاينة عن التصدير</li>
+              <li>تحسين القائمة السياقية وإعادة ترتيب أزرار الواجهة العربية</li>
             </ul>
           </div>
           <div class="release-date">مارس 2026</div>
@@ -734,10 +1127,7 @@
           <div class="release-version">v1.0.0</div>
           <div class="release-notes">
             <ul>
-              <li>🎉 الإصدار الأول</li>
-              <li>دعم ffmpeg و yt-dlp</li>
-              <li>واجهة عربية كاملة</li>
-              <li>جميع المميزات الأساسية</li>
+              <li>🎉 الإصدار الأول — دعم ffmpeg و yt-dlp وواجهة عربية كاملة</li>
             </ul>
           </div>
           <div class="release-date">يناير 2026</div>
@@ -745,37 +1135,23 @@
       </div>
     </div>
 
-    <!-- ===== التثبيت السريع ===== -->
+    <!-- ===== التطوير من المصدر ===== -->
     <div class="section">
       <div class="section-title">
-        <span class="icon">🚀</span>
-        <span>البداية السريعة</span>
+        <span class="icon">⚙️</span>
+        <span>البناء من المصدر</span>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px;">
-        <div class="card">
-          <h3 style="color: var(--al); margin-bottom: 16px;">AppImage</h3>
-          <div class="code-block">
-            chmod +x GT-SQRM-1.1.0.AppImage<br>
-            ./GT-SQRM-1.1.0.AppImage
-          </div>
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.AppImage" class="download-link" style="width: 100%; justify-content: center;" download>⬇️ تحميل AppImage (ملف مباشر)</a>
-        </div>
-        <div class="card">
-          <h3 style="color: var(--al); margin-bottom: 16px;">حزمة Deb</h3>
-          <div class="code-block">
-            sudo dpkg -i GT-SQRM-1.1.0.deb<br>
-            sudo apt --fix-broken install
-          </div>
-          <a href="https://github.com/SalehGNUTUX/GT-SQRM/releases/download/GT-SQRM-1.1.0/GT-SQRM-1.1.0.deb" class="download-link" style="width: 100%; justify-content: center;" download>📦 تحميل Deb (ملف مباشر)</a>
-        </div>
-        <div class="card">
-          <h3 style="color: var(--al); margin-bottom: 16px;">التطوير</h3>
-          <div class="code-block">
-            git clone https://github.com/SalehGNUTUX/GT-SQRM.git<br>
-            cd GT-SQRM<br>
-            npm install<br>
-            npm run dev
-          </div>
+      <div class="card">
+        <p style="margin-bottom:16px;color:var(--text-secondary);">إذا أردت البناء بنفسك (يلزم Node.js 18+ و <code>rpmbuild</code>/<code>alien</code> للـ RPM):</p>
+        <div class="code-block">
+git clone https://github.com/SalehGNUTUX/GT-SQRM.git<br>
+cd GT-SQRM/GT-SQRM-main<br>
+npm install<br>
+npm run build:all          # AppImage + DEB + RPM في تشغيلة واحدة<br>
+# أو منفصلة:<br>
+npm run build              # AppImage فقط<br>
+npm run build:deb          # DEB فقط<br>
+npm run build:rpm          # RPM فقط (مع alien fallback)
         </div>
       </div>
     </div>
@@ -783,17 +1159,16 @@
     <!-- ===== التثبيت عبر GearLever ===== -->
     <div class="section">
       <div class="section-title">
-        <span class="icon">⚙️</span>
+        <span class="icon">✨</span>
         <span>دمج AppImage في قائمة البرامج</span>
       </div>
       <div class="card">
-        <p style="margin-bottom: 16px;">يمكنك استخدام <strong>GearLever</strong> لدمج AppImage في قائمة البرامج بسهولة:</p>
+        <p style="margin-bottom: 16px;">إذا اخترت AppImage، يمكنك استخدام <strong>GearLever</strong> لدمج التطبيق في قائمة البرامج بسهولة:</p>
         <div class="code-block">
-          # من Flatpak<br>
-          flatpak install flathub it.mijorus.gearlever<br><br>
-          # ثم اسحب ملف AppImage إلى نافذة GearLever
+flatpak install flathub it.mijorus.gearlever<br>
+# ثم اسحب ملف GT-SQRM-3.0.0.AppImage إلى نافذة GearLever
         </div>
-        <p style="color: var(--t2); margin-top: 16px;">سيظهر التطبيق تلقائياً في قائمة البرامج مع الأيقونة الخاصة به.</p>
+        <p style="color: var(--t2); margin-top: 16px;">سيظهر التطبيق تلقائياً في قائمة البرامج مع الأيقونة الخاصة به. حزم DEB و RPM تتولى ذلك تلقائياً بدون أدوات إضافية.</p>
       </div>
     </div>
   </div>
@@ -811,12 +1186,21 @@
       <p style="color: var(--t3); margin-top: 16px;">مفتوح المصدر بالكامل</p>
     </div>
     <div class="footer-links">
-      <h4>الروابط</h4>
+      <h4>سطح المكتب (GT-SQRM)</h4>
       <ul>
-        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM">المستودع</a></li>
-        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM/releases">الإصدارات</a></li>
-        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM/issues">المشاكل</a></li>
-        <li><a href="https://github.com/SalehGNUTUX">المطور</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM" target="_blank" rel="noopener">المستودع</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM/releases" target="_blank" rel="noopener">الإصدارات</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM/issues" target="_blank" rel="noopener">الإبلاغ عن مشكلة</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQRM/blob/main/GT-SQRM-main/CHANGELOG.md" target="_blank" rel="noopener">سجل التغييرات</a></li>
+      </ul>
+    </div>
+    <div class="footer-links">
+      <h4>الويب (GT-SQR)</h4>
+      <ul>
+        <li><a href="https://salehgnutux.github.io/GT-SQR/" target="_blank" rel="noopener">التجربة المباشرة 🌐</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQR" target="_blank" rel="noopener">المستودع</a></li>
+        <li><a href="https://github.com/SalehGNUTUX/GT-SQR/issues" target="_blank" rel="noopener">الإبلاغ عن مشكلة</a></li>
+        <li><a href="https://github.com/SalehGNUTUX" target="_blank" rel="noopener">المطور</a></li>
       </ul>
     </div>
     <div class="footer-links">
@@ -830,7 +1214,7 @@
     </div>
   </div>
   <div class="copyright">
-    <p>© 2026 SalehGNUTUX - GNU General Public License v3.0</p>
+    <p>© 2026 SalehGNUTUX — GT-SQRM v3.0.0 &amp; GT-SQR v3.0.0 — GNU General Public License v3.0</p>
     <p style="margin-top: 8px;">بُني بـ ❤️ لخدمة القرآن الكريم</p>
   </div>
 </footer>
@@ -904,19 +1288,25 @@
 
 <!-- ===== إحصائيات GitHub ===== -->
 <script>
-  fetch('https://api.github.com/repos/SalehGNUTUX/GT-SQRM')
-    .then(response => response.json())
-    .then(data => {
-      const stars = data.stargazers_count;
-      if (stars) {
-        const starElement = document.createElement('span');
-        starElement.className = 'badge';
-        starElement.style.marginRight = '8px';
-        starElement.textContent = `⭐ ${stars} نجوم`;
-        document.querySelector('.header-right a:last-child').appendChild(starElement);
-      }
-    })
-    .catch(() => {});
+  function attachStars(repo, selector) {
+    fetch(`https://api.github.com/repos/${repo}`)
+      .then(r => r.json())
+      .then(data => {
+        const stars = data.stargazers_count;
+        if (!stars) return;
+        const target = document.querySelector(selector);
+        if (!target) return;
+        const badge = document.createElement('span');
+        badge.className = 'badge';
+        badge.style.marginInlineStart = '8px';
+        badge.textContent = `⭐ ${stars}`;
+        target.appendChild(badge);
+      })
+      .catch(() => {});
+  }
+  // أضف عدّاد النجوم بجانب رابط كل مستودع في التذييل
+  attachStars('SalehGNUTUX/GT-SQRM', '.footer-links a[href$="GT-SQRM"]');
+  attachStars('SalehGNUTUX/GT-SQR',  '.footer-links a[href$="GT-SQR"]');
 </script>
 </body>
 </html>

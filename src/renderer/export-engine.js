@@ -56,28 +56,66 @@ function fftMagnitudes(input) {
 }
 
 function precomputeWaveDataForExport(mixed, totalFrames, FPS) {
+  // يحاكي تماماً سلوك AnalyserNode المُستخدم في المعاينة:
+  //   fftSize=512, smoothingTimeConstant=0.82
+  //   minDecibels=-100, maxDecibels=-30 (افتراضيّات Web Audio API)
+  // الناتج: ذبذبات هابطة بانسيابيّة مطابقة للمعاينة (slow falling).
   const sr = mixed.sampleRate;
-  const ch = mixed.getChannelData(0);
-  const N = 512, bins = 64;
-  const hann = new Float32Array(N);
-  for (let i = 0; i < N; i++) hann[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (N - 1));
-  const voiceStartBin = Math.max(1, Math.floor(80   * N / sr));
-  const voiceEndBin   = Math.min((N >> 1) - 1, Math.floor(3000 * N / sr));
-  const voiceRange    = Math.max(2, voiceEndBin - voiceStartBin);
+  const ch0 = mixed.getChannelData(0);
+  const ch1 = mixed.numberOfChannels > 1 ? mixed.getChannelData(1) : null;
+  const N = 512;
+  const halfN = N >> 1;
+  const bins = 64;
+
+  // نافذة Blackman (المستخدمة فعلياً في AnalyserNode — أدقّ من Hann)
+  const blackman = new Float32Array(N);
+  for (let i = 0; i < N; i++) {
+    blackman[i] = 0.42 - 0.5 * Math.cos((2 * Math.PI * i) / (N - 1))
+                       + 0.08 * Math.cos((4 * Math.PI * i) / (N - 1));
+  }
+
+  // نطاق الصوت البشريّ (مطابق للمعاينة)
+  const voiceStart = 1;
+  const voiceEnd = Math.min(35, halfN - 1);
+  const voiceLen = voiceEnd - voiceStart + 1;
+
+  const SMOOTHING = 0.82;
+  const MIN_DB = -100;
+  const MAX_DB = -30;
+  const DB_RANGE = MAX_DB - MIN_DB;
+
+  const smoothedDB = new Float32Array(halfN);
+  for (let i = 0; i < halfN; i++) smoothedDB[i] = MIN_DB;
+
   const window = new Float32Array(N);
   const out = new Array(totalFrames);
+
   for (let frame = 0; frame < totalFrames; frame++) {
     const t = frame / FPS;
-    const startSample = Math.max(0, Math.floor(t * sr) - (N >> 1));
+    const startSample = Math.max(0, Math.floor(t * sr) - halfN);
     for (let i = 0; i < N; i++) {
       const idx = startSample + i;
-      window[i] = idx < ch.length ? ch[idx] * hann[i] : 0;
+      let s = 0;
+      if (idx < ch0.length) {
+        s = ch0[idx];
+        if (ch1) s = (s + ch1[idx]) * 0.5;
+      }
+      window[i] = s * blackman[i];
     }
+
     const mag = fftMagnitudes(window);
+
+    for (let i = 0; i < halfN; i++) {
+      const m = Math.max(mag[i], 1e-10);
+      const db = 20 * Math.log10(m);
+      smoothedDB[i] = SMOOTHING * smoothedDB[i] + (1 - SMOOTHING) * db;
+    }
+
     const data = new Uint8Array(bins);
     for (let b = 0; b < bins; b++) {
-      const fftBin = voiceStartBin + Math.floor((b / bins) * voiceRange);
-      data[b] = Math.min(255, Math.floor(mag[fftBin] * 4000));
+      const srcIdx = voiceStart + Math.floor((b / bins) * voiceLen);
+      const normalized = (smoothedDB[srcIdx] - MIN_DB) / DB_RANGE;
+      data[b] = Math.max(0, Math.min(255, Math.floor(normalized * 255)));
     }
     out[frame] = data;
   }
@@ -168,9 +206,7 @@ function sliceAudioBuffer(buf, startSec, endSec) {
   const startSample = Math.max(0, Math.floor(startSec * sr));
   const endSample   = Math.min(buf.length, Math.floor(endSec * sr));
   const length = Math.max(1, endSample - startSample);
-  const out = new (window.AudioBuffer || OfflineAudioContext.prototype.constructor.AudioBuffer)
-    ? null : null;
-  // إنشاء عبر OfflineAudioContext لضمان التوافق
+  // إنشاء AudioBuffer جديد عبر OfflineAudioContext (تجنّب new AudioBuffer مباشرة)
   const ctx = new OfflineAudioContext(buf.numberOfChannels, length, sr);
   const newBuf = ctx.createBuffer(buf.numberOfChannels, length, sr);
   for (let ch = 0; ch < buf.numberOfChannels; ch++) {

@@ -305,6 +305,47 @@ function initEventListeners() {
     const ctrl = $("vtitle-ctrl");
     if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
   });
+
+  // v3.2 — Chromakey للوسائط
+  const chromaOn = $("chromakey-on");
+  if (chromaOn) chromaOn.addEventListener("change", (e) => {
+    const ctrl = $("chromakey-ctrl");
+    if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
+  });
+  $("chromakey-preset-green")?.addEventListener("click", () => {
+    const inp = $("chromakey-color"); if (inp) { inp.value = "#00b140"; inp.dispatchEvent(new Event("change")); }
+  });
+  $("chromakey-preset-blue")?.addEventListener("click", () => {
+    const inp = $("chromakey-color"); if (inp) { inp.value = "#0047bb"; inp.dispatchEvent(new Event("change")); }
+  });
+
+  // v3.2 — فيديو التلاوة
+  const recvidOn = $("recvid-on");
+  if (recvidOn) recvidOn.addEventListener("change", (e) => {
+    const ctrl = $("recvid-ctrl");
+    if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
+    if (e.target.checked) toast("🎥 وضع فيديو التلاوة مُفعَّل — ارفع فيديو لتفعيل العرض", "info", 2200);
+    else if (S.recVidEl) { try { S.recVidEl.pause(); } catch (_) {} }
+  });
+  const recvidFile = $("recvid-file");
+  if (recvidFile) recvidFile.addEventListener("change", (e) => onRecVidFile(e.target));
+  $("recvid-remove")?.addEventListener("click", () => { removeRecVid(); toast("🗑️ تمّت إزالة الفيديو", "info", 1500); });
+  const setRecvidBg = (hex) => { const inp = $("recvid-bgcolor"); if (inp) { inp.value = hex; inp.dispatchEvent(new Event("change")); } };
+  $("recvid-bgcolor-black")?.addEventListener("click", () => setRecvidBg("#000000"));
+  $("recvid-bgcolor-white")?.addEventListener("click", () => setRecvidBg("#ffffff"));
+  $("recvid-bgcolor-green")?.addEventListener("click", () => setRecvidBg("#00b140"));
+  $("recvid-bgcolor-blue")?.addEventListener("click", () => setRecvidBg("#0047bb"));
+
+  // v3.2 — Chromakey للشعار
+  const logoChromaOn = $("logo-chroma-on");
+  if (logoChromaOn) logoChromaOn.addEventListener("change", (e) => {
+    const ctrl = $("logo-chroma-ctrl");
+    if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
+  });
+  const setLogoChroma = (hex) => { const inp = $("logo-chroma-color"); if (inp) { inp.value = hex; inp.dispatchEvent(new Event("change")); } };
+  $("logo-chroma-white")?.addEventListener("click", () => setLogoChroma("#ffffff"));
+  $("logo-chroma-black")?.addEventListener("click", () => setLogoChroma("#000000"));
+  $("logo-chroma-green")?.addEventListener("click", () => setLogoChroma("#00b140"));
   const surahSel = $("surah-sel");
   if (surahSel) surahSel.addEventListener("change", onSurahChange);
 
@@ -339,6 +380,16 @@ function initEventListeners() {
     { id: "wave-gain", outId: "wave-gain-v", unit: "%" },
     { id: "vtitle-y", outId: "vtitle-y-v", unit: "%" },
     { id: "vtitle-size", outId: "vtitle-size-v", unit: "%" },
+    { id: "chromakey-similarity", outId: "chromakey-similarity-v", unit: "" },
+    { id: "chromakey-smoothness", outId: "chromakey-smoothness-v", unit: "" },
+    { id: "chromakey-spill", outId: "chromakey-spill-v", unit: "" },
+    { id: "recvid-x", outId: "recvid-x-v", unit: "%" },
+    { id: "recvid-y", outId: "recvid-y-v", unit: "%" },
+    { id: "recvid-scale", outId: "recvid-scale-v", unit: "%" },
+    { id: "recvid-threshold", outId: "recvid-threshold-v", unit: "" },
+    { id: "recvid-softness", outId: "recvid-softness-v", unit: "" },
+    { id: "logo-chroma-threshold", outId: "logo-chroma-threshold-v", unit: "" },
+    { id: "logo-chroma-softness", outId: "logo-chroma-softness-v", unit: "" },
     { id: "sname-y", outId: "sname-y-v", unit: "%" },
     { id: "sname-size", outId: "sname-size-v", unit: "%" },
     { id: "orn-op", outId: "orn-op-v", unit: "%" },
@@ -698,7 +749,10 @@ function drawFrame(ts) {
   if (ge("fx-kaleido")) applyKaleido(ctx, W, H);
   if (ge("fx-glitch")) applyGlitch(ctx, W, H);
   if (ge("fx-oldfilm")) applyOldFilm(ctx, W, H, ts);
-  if (S.verses.length) drawVerse(ctx, W, H, ts);
+  // v3.2 — فيديو التلاوة الجاهز يستبدل النصّ/الآيات
+  const recvidActive = ge("recvid-on") && S.recVidEl;
+  if (recvidActive) drawRecitationVideo(ctx, W, H);
+  else if (S.verses.length) drawVerse(ctx, W, H, ts);
   drawSurahName(ctx, W, H);
   drawVideoTitle(ctx, W, H);
   drawWave(ctx, W, H, ts);
@@ -716,43 +770,238 @@ function drawBg(ctx, W, H, ts) {
   const bgt = radioVal("bgt");
   const bgm = radioVal("bgm");
   const bright = gv("bright") / 100;
+  const chromaOn = ge("chromakey-on");
 
   ctx.save();
   ctx.filter = `brightness(${bright}) saturate(${gv("satur") / 100})`;
 
-  if (bgt === "gradient" || (!S.bgImg && !S.bgVid)) {
-    drawGradient(ctx, W, H);
-  } else if (bgt === "image" && S.bgImg) {
-    ctx.save();
-    applyBgMotion(ctx, W, H, bgm, ts);
-    imgCover(ctx, S.bgImg, 0, 0, W, H);
-    ctx.restore();
-  } else if (bgt === "video" && (S._exportBgFrameImg || S.bgVid)) {
-    const src = S._exportBgFrameImg || S.bgVid;
-    const ready = (src instanceof HTMLVideoElement) ? src.readyState >= 2 : !!src;
-    if (ready) {
-      // ── Crossfade بين مقطعَين عند الانتقال (المعاينة فقط) ──
+  // v3.2 — رسم الوسائط على canvas منفصل عند تفعيل Chromakey
+  const drawMediaToCanvas = (targetCtx, applyMotion) => {
+    if (bgt === "image" && S.bgImg) {
+      targetCtx.save();
+      if (applyMotion) applyBgMotion(targetCtx, W, H, bgm, ts);
+      imgCover(targetCtx, S.bgImg, 0, 0, W, H);
+      targetCtx.restore();
+      return true;
+    } else if (bgt === "video" && (S._exportBgFrameImg || S.bgVid)) {
+      const src = S._exportBgFrameImg || S.bgVid;
+      const ready = (src instanceof HTMLVideoElement) ? src.readyState >= 2 : !!src;
+      if (!ready) return false;
       updateBgVidCrossfade();
       const alpha = S.bgVidFadeProgress;
-      ctx.save();
-      applyBgMotion(ctx, W, H, bgm, ts);
-      // ارسم الحالي بشفافية متناقصة
-      ctx.globalAlpha = 1 - alpha;
-      imgCover(ctx, src, 0, 0, W, H);
-      // ارسم القادم فوقه بشفافية متزايدة (إن كان يتم الـ crossfade)
+      targetCtx.save();
+      if (applyMotion) applyBgMotion(targetCtx, W, H, bgm, ts);
+      targetCtx.globalAlpha = 1 - alpha;
+      imgCover(targetCtx, src, 0, 0, W, H);
       if (S.bgVidNext && S.bgVidNext.readyState >= 2 && alpha > 0) {
-        ctx.globalAlpha = alpha;
-        imgCover(ctx, S.bgVidNext, 0, 0, W, H);
+        targetCtx.globalAlpha = alpha;
+        imgCover(targetCtx, S.bgVidNext, 0, 0, W, H);
       }
-      ctx.restore();
-    } else {
-      drawGradient(ctx, W, H);
+      targetCtx.restore();
+      return true;
+    }
+    return false;
+  };
+
+  const hasMedia = (bgt === "image" && S.bgImg) || (bgt === "video" && (S._exportBgFrameImg || S.bgVid));
+  if (bgt === "gradient" || !hasMedia) {
+    drawGradient(ctx, W, H);
+  } else if (chromaOn) {
+    drawGradient(ctx, W, H);
+    const tmp = getChromakeyCanvas(W, H);
+    const tctx = tmp.getContext("2d", { willReadFrequently: true });
+    tctx.clearRect(0, 0, W, H);
+    tctx.filter = ctx.filter;
+    const drawn = drawMediaToCanvas(tctx, true);
+    tctx.filter = "none";
+    if (drawn) {
+      applyChromakeyToCanvas(tctx, W, H);
+      ctx.filter = "none";
+      ctx.drawImage(tmp, 0, 0);
     }
   } else {
-    drawGradient(ctx, W, H);
+    drawMediaToCanvas(ctx, true) || drawGradient(ctx, W, H);
   }
   ctx.restore();
   ctx.filter = "none";
+}
+
+// v3.2 — Chromakey للوسائط
+let _chromakeyCanvas = null;
+function getChromakeyCanvas(W, H) {
+  if (!_chromakeyCanvas) _chromakeyCanvas = document.createElement("canvas");
+  if (_chromakeyCanvas.width !== W) _chromakeyCanvas.width = W;
+  if (_chromakeyCanvas.height !== H) _chromakeyCanvas.height = H;
+  return _chromakeyCanvas;
+}
+function hexToRgb(hex) {
+  const m = (hex || "#00b140").replace("#", "");
+  return { r: parseInt(m.substr(0, 2), 16), g: parseInt(m.substr(2, 2), 16), b: parseInt(m.substr(4, 2), 16) };
+}
+function applyChromakeyToCanvas(ctx, W, H) {
+  const colorHex = $("chromakey-color")?.value || "#00b140";
+  const { r: kR, g: kG, b: kB } = hexToRgb(colorHex);
+  const similarity = (parseFloat(gv("chromakey-similarity")) || 30);
+  const smoothness = (parseFloat(gv("chromakey-smoothness")) || 15);
+  const spill = (parseFloat(gv("chromakey-spill")) || 20) / 100;
+  const keyCb = -0.168736 * kR - 0.331264 * kG + 0.5 * kB + 128;
+  const keyCr = 0.5 * kR - 0.418688 * kG - 0.081312 * kB + 128;
+  const sim = similarity * 1.5;
+  const smooth = Math.max(0.5, smoothness * 1.5);
+  const img = ctx.getImageData(0, 0, W, H);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
+    const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
+    const dx = cb - keyCb, dy = cr - keyCr;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    let alpha = 1;
+    if (dist < sim) alpha = 0;
+    else if (dist < sim + smooth) alpha = (dist - sim) / smooth;
+    d[i + 3] = d[i + 3] * alpha;
+    if (alpha > 0 && spill > 0) {
+      if (kG > kR && kG > kB) {
+        const avg = (r + b) / 2;
+        if (g > avg) d[i + 1] = g + (avg - g) * spill;
+      } else if (kB > kR && kB > kG) {
+        const avg = (r + g) / 2;
+        if (b > avg) d[i + 2] = b + (avg - b) * spill;
+      } else if (kR > kG && kR > kB) {
+        const avg = (g + b) / 2;
+        if (r > avg) d[i] = r + (avg - r) * spill;
+      }
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+}
+
+// v3.2 — خوارزميّة موحّدة لإزالة لون خلفيّة (تتكيّف: أسود/أبيض → سطوع، ألوان → YCbCr)
+function removeBgColorFromRegion(ctx, x, y, w, h, opts) {
+  const colorHex = opts.colorHex || "#000000";
+  const { r: kR, g: kG, b: kB } = hexToRgb(colorHex);
+  const threshold = opts.threshold ?? 25;
+  const softness = opts.softness ?? 10;
+  const maxCh = Math.max(kR, kG, kB), minCh = Math.min(kR, kG, kB);
+  const isGrayscale = (maxCh - minCh) < 25;
+  const isDark = isGrayscale && maxCh < 60;
+  const isLight = isGrayscale && minCh > 195;
+  let mode, lo, hi, range, keyCb, keyCr, sim, smooth;
+  if (isDark) {
+    mode = "dark"; lo = threshold * 2.55; hi = lo + softness * 2.55; range = Math.max(0.5, hi - lo);
+  } else if (isLight) {
+    mode = "light"; hi = 255 - threshold * 2.55; lo = hi - softness * 2.55; range = Math.max(0.5, hi - lo);
+  } else {
+    mode = "ycbcr";
+    keyCb = -0.168736 * kR - 0.331264 * kG + 0.5 * kB + 128;
+    keyCr = 0.5 * kR - 0.418688 * kG - 0.081312 * kB + 128;
+    sim = threshold * 1.5; smooth = Math.max(0.5, softness * 1.5);
+  }
+  const img = ctx.getImageData(x, y, w, h);
+  const d = img.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    let alpha;
+    if (mode === "dark") {
+      const lum = Math.max(r, g, b);
+      if (lum <= lo) alpha = 0; else if (lum >= hi) alpha = 1; else alpha = (lum - lo) / range;
+    } else if (mode === "light") {
+      const lum = Math.min(r, g, b);
+      if (lum >= hi) alpha = 0; else if (lum <= lo) alpha = 1; else alpha = (hi - lum) / range;
+    } else {
+      const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
+      const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
+      const dx = cb - keyCb, dy = cr - keyCr;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < sim) alpha = 0;
+      else if (dist < sim + smooth) alpha = (dist - sim) / smooth;
+      else alpha = 1;
+    }
+    d[i + 3] = d[i + 3] * alpha;
+  }
+  ctx.putImageData(img, x, y);
+}
+
+// v3.2 — فيديو التلاوة الجاهز
+let _recVidCanvas = null;
+function getRecVidCanvas(W, H) {
+  if (!_recVidCanvas) _recVidCanvas = document.createElement("canvas");
+  if (_recVidCanvas.width !== W) _recVidCanvas.width = W;
+  if (_recVidCanvas.height !== H) _recVidCanvas.height = H;
+  return _recVidCanvas;
+}
+function drawRecitationVideo(ctx, W, H) {
+  const v = S.recVidEl;
+  if (!v || v.readyState < 2) return;
+  const sw = v.videoWidth, sh = v.videoHeight;
+  if (!sw || !sh) return;
+  const fit = $("recvid-fit")?.value || "contain";
+  const xPct = parseFloat(gv("recvid-x")) || 0;
+  const yPct = parseFloat(gv("recvid-y")) || 0;
+  const scale = (parseFloat(gv("recvid-scale")) || 100) / 100;
+  let dw, dh;
+  const ir = sw / sh, cr = W / H;
+  if (fit === "stretch") { dw = W; dh = H; }
+  else if (fit === "actual") { dw = sw; dh = sh; }
+  else if (fit === "cover") {
+    if (ir > cr) { dh = H; dw = dh * ir; } else { dw = W; dh = dw / ir; }
+  } else {
+    if (ir > cr) { dw = W; dh = dw / ir; } else { dh = H; dw = dh * ir; }
+  }
+  dw *= scale; dh *= scale;
+  const dx = (W - dw) / 2 + (xPct / 100) * W;
+  const dy = (H - dh) / 2 + (yPct / 100) * H;
+  const tmp = getRecVidCanvas(W, H);
+  const tctx = tmp.getContext("2d", { willReadFrequently: true });
+  tctx.clearRect(0, 0, W, H);
+  tctx.drawImage(v, dx, dy, dw, dh);
+  const rx = Math.max(0, Math.floor(dx)), ry = Math.max(0, Math.floor(dy));
+  const rw = Math.min(W - rx, Math.ceil(dw)), rh = Math.min(H - ry, Math.ceil(dh));
+  if (rw > 0 && rh > 0) {
+    removeBgColorFromRegion(tctx, rx, ry, rw, rh, {
+      colorHex: $("recvid-bgcolor")?.value || "#000000",
+      threshold: parseFloat(gv("recvid-threshold")) || 25,
+      softness: parseFloat(gv("recvid-softness")) || 10,
+    });
+  }
+  ctx.drawImage(tmp, 0, 0);
+}
+function onRecVidFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  removeRecVid();
+  const url = URL.createObjectURL(file);
+  const v = document.createElement("video");
+  v.src = url; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous";
+  v.onloadedmetadata = () => {
+    const sec = isFinite(v.duration) ? v.duration : 0;
+    const info = $("recvid-info");
+    if (info) info.textContent = `✅ ${file.name} · ${v.videoWidth}×${v.videoHeight} · ${sec.toFixed(1)}s · ${(file.size / 1e6).toFixed(1)}MB`;
+    resumeAudioCtx().then(ctx => {
+      try {
+        const src = ctx.createMediaElementSource(v);
+        src.connect(ctx.destination);
+        src.connect(S.analyser);
+        src.connect(S.exportDest);
+        S.recVidAudioSource = src;
+      } catch (_) {}
+    }).catch(console.warn);
+    S.verses = [{ text: "", numberInSurah: 1, number: 1, audio: null, audioSecondary: [], manualDuration: sec, free: true, recvid: true }];
+    S.ayaDurations = [sec];
+    S.currentAya = 0; S.elapsed = 0;
+    if (typeof updateAyaUI === "function") updateAyaUI();
+    toast(`🎥 تمّ تحميل فيديو التلاوة (${sec.toFixed(1)}s)`, "success", 2200);
+  };
+  v.onerror = () => toast("❌ فشل تحميل الفيديو", "error", 2500);
+  S.recVidEl = v;
+  S.recVidFile = file;
+  input.value = "";
+}
+function removeRecVid() {
+  if (S.recVidAudioSource) { try { S.recVidAudioSource.disconnect(); } catch (_) {} S.recVidAudioSource = null; }
+  if (S.recVidEl) { try { S.recVidEl.pause(); S.recVidEl.src = ""; } catch (_) {} S.recVidEl = null; }
+  S.recVidFile = null;
+  const info = $("recvid-info"); if (info) info.textContent = "";
 }
 
 function drawGradient(ctx, W, H) {
@@ -1373,11 +1622,37 @@ function drawLogo(ctx, W, H) {
     default: x = W - drawW - pad; y = H - drawH - pad;
   }
 
-  ctx.save();
-  ctx.globalAlpha = opacity;
-  ctx.globalCompositeOperation = "source-over";
-  ctx.drawImage(src, x, y, drawW, drawH);
-  ctx.restore();
+  // v3.2 — Chromakey للشعار
+  const chromaOn = ge("logo-chroma-on");
+  if (chromaOn) {
+    const tmp = getLogoChromaCanvas(Math.ceil(drawW), Math.ceil(drawH));
+    const tctx = tmp.getContext("2d", { willReadFrequently: true });
+    tctx.clearRect(0, 0, tmp.width, tmp.height);
+    tctx.drawImage(src, 0, 0, drawW, drawH);
+    removeBgColorFromRegion(tctx, 0, 0, Math.ceil(drawW), Math.ceil(drawH), {
+      colorHex: $("logo-chroma-color")?.value || "#ffffff",
+      threshold: parseFloat(gv("logo-chroma-threshold")) || 25,
+      softness: parseFloat(gv("logo-chroma-softness")) || 10,
+    });
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.drawImage(tmp, x, y);
+    ctx.restore();
+  } else {
+    ctx.save();
+    ctx.globalAlpha = opacity;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.drawImage(src, x, y, drawW, drawH);
+    ctx.restore();
+  }
+}
+
+let _logoChromaCanvas = null;
+function getLogoChromaCanvas(w, h) {
+  if (!_logoChromaCanvas) _logoChromaCanvas = document.createElement("canvas");
+  if (_logoChromaCanvas.width !== w) _logoChromaCanvas.width = w;
+  if (_logoChromaCanvas.height !== h) _logoChromaCanvas.height = h;
+  return _logoChromaCanvas;
 }
 
 // ══════════════════════════════════════════════════════
@@ -2724,13 +2999,15 @@ function togglePlay() {
 }
 
 function startPlayer() {
-  if (!S.verses.length) { toast("⚠️ لا توجد آيات مُحمَّلة", "error"); return; }
+  const recvidActive = ge("recvid-on") && S.recVidEl;
+  if (!recvidActive && !S.verses.length) { toast("⚠️ لا توجد آيات مُحمَّلة", "error"); return; }
   S.playing = true;
   $("btn-play").textContent = "⏸️";
   resumeAudioCtx().catch(console.warn);
   if (S.bgAudioEl) { S.bgAudioEl.loop = ge("bg-loop"); S.bgAudioEl.play().catch(() => { }); }
   if (S.bgVid) S.bgVid.play().catch(() => {});
-  playRecitationAudio();
+  if (recvidActive) { try { S.recVidEl.play().catch(() => {}); } catch (_) {} }
+  else playRecitationAudio();
 }
 
 function pausePlayer() {
@@ -2738,7 +3015,8 @@ function pausePlayer() {
   $("btn-play").textContent = "▶️";
   stopRecitationAudio();
   if (S.bgAudioEl) S.bgAudioEl.pause();
-  // إعادة فيديو الخلفية للبداية تحضيراً للتصدير
+  // v3.2 — أوقف فيديو التلاوة وأعِده إلى البداية
+  if (S.recVidEl) { try { S.recVidEl.pause(); S.recVidEl.currentTime = 0; } catch (_) {} }
   if (S.bgVid) {
     S.bgVid.pause();
     S.bgVid.currentTime = 0;
@@ -4749,6 +5027,13 @@ async function serializeProject() {
     else { a.mode = "missing"; a.reason = "حجم أكبر من 50MB"; }
     assets.push(a);
   }
+  // v3.2 — فيديو التلاوة الجاهز
+  if (S.recVidFile) {
+    const a = { key: "recVideo", name: S.recVidFile.name || "recitation.mp4", size: S.recVidFile.size || 0, mime: S.recVidFile.type || "video/mp4" };
+    if (S.recVidFile.size <= ASSET_EMBED_MAX) { a.mode = "embedded"; a.dataURL = await fileToDataURL(S.recVidFile); }
+    else { a.mode = "missing"; a.reason = "حجم أكبر من 50MB"; }
+    assets.push(a);
+  }
   const logoDataURL = localStorage.getItem("gt_sqrm_logo_v1");
   if (logoDataURL) assets.push({ key: "logo", name: "logo.png", mode: "embedded", dataURL: logoDataURL });
   return {
@@ -4800,6 +5085,8 @@ async function restoreAssetFromDataURL(asset) {
     if (typeof onBgMedia === "function") onBgMedia(fakeInput, "image");
   } else if (asset.key === "bgAudio") {
     if (typeof onBgAudio === "function") onBgAudio(fakeInput);
+  } else if (asset.key === "recVideo") {
+    if (typeof onRecVidFile === "function") onRecVidFile(fakeInput);
   } else if (asset.key && asset.key.startsWith("bgVideo[")) {
     if (typeof addBgVidItem === "function") {
       addBgVidItem(file);

@@ -572,6 +572,57 @@ body.offline .offline-badge{display:block}
           <div class="fg" style="margin-top:6px"><label class="fl">🤫 فاصل صمت بين الآيات</label><div class="sg"><input type="range" min="0" max="3" step=".1" value="0" id="aya-gap"><span class="sv" id="aya-gap-v">0s</span></div></div>
           <span class="note" style="display:block;margin-top:2px">صمت إضافي بعد كل آية قبل بدء التالية — مفيد لإيقاع التلاوة الطبيعي</span>
         </div>
+
+        <!-- ═══ v3.2 — فيديو تلاوة جاهز ═══ -->
+        <div class="sec">
+          <div class="sec-t">🎥 فيديو تلاوة جاهز <span class="badge-new">v3.2</span></div>
+          <div class="note">للمقاطع الجاهزة (صوت + نصّ على خلفيّة لونيّة). يستخدم صوت الفيديو كتلاوة ويعرض النصّ مع إزالة الخلفيّة لإظهار الخلفيّة المخصّصة.</div>
+          <div class="tgg" style="background:var(--bg2);border:1px solid var(--p);border-radius:var(--r);padding:6px 8px;margin-top:6px">
+            <span class="tgl">🎬 استخدام فيديو تلاوة جاهز<br><small style="color:var(--t3)">يحلّ محلّ القارئ الافتراضيّ ويستخدم صوت الفيديو</small></span>
+            <label class="tg"><input type="checkbox" id="recvid-on"><span class="tgs"></span></label>
+          </div>
+          <div id="recvid-ctrl" style="display:none;margin-top:6px">
+            <div class="fu-area" style="margin-bottom:6px">
+              <input type="file" accept="video/*" id="recvid-file">
+              <div class="fu-icon">📥</div>
+              <div class="fu-txt">رفع فيديو التلاوة<br><small>MP4 · WebM · MOV</small></div>
+            </div>
+            <div id="recvid-info" style="font-size:10px;color:var(--t3);margin-bottom:6px;min-height:14px"></div>
+
+            <div style="font-size:11px;color:var(--al);font-weight:700;margin:8px 0 4px 0">📐 المقاس والموضع</div>
+            <div class="fg"><label class="fl">نمط الملاءمة</label>
+              <select class="fc" id="recvid-fit">
+                <option value="contain" selected>احتواء (يحافظ على النسبة)</option>
+                <option value="cover">تغطية كاملة</option>
+                <option value="stretch">تمديد (يملأ كاملاً)</option>
+                <option value="actual">الحجم الأصليّ</option>
+              </select>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">الموضع الأفقي X</label><div class="sg"><input type="range" min="-50" max="50" step="1" value="0" id="recvid-x"><span class="sv" id="recvid-x-v">0%</span></div></div>
+              <div class="fg"><label class="fl">الموضع العمودي Y</label><div class="sg"><input type="range" min="-50" max="50" step="1" value="0" id="recvid-y"><span class="sv" id="recvid-y-v">0%</span></div></div>
+            </div>
+            <div class="fg"><label class="fl">الحجم النسبيّ</label><div class="sg"><input type="range" min="20" max="200" step="1" value="100" id="recvid-scale"><span class="sv" id="recvid-scale-v">100%</span></div></div>
+
+            <div style="font-size:11px;color:var(--al);font-weight:700;margin:8px 0 4px 0">🎨 إزالة خلفيّة الفيديو</div>
+            <div class="fg"><label class="fl">لون الخلفيّة المراد إزالته</label>
+              <div style="display:flex;gap:5px;align-items:center">
+                <div class="cpg" style="flex:1"><input type="color" id="recvid-bgcolor" value="#000000"></div>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-black" title="أسود">⚫</button>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-white" title="أبيض">⚪</button>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-green" title="أخضر">🟢</button>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-blue" title="أزرق">🔵</button>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">العتبة (threshold)</label><div class="sg"><input type="range" min="0" max="100" step="1" value="25" id="recvid-threshold"><span class="sv" id="recvid-threshold-v">25</span></div></div>
+              <div class="fg"><label class="fl">نعومة الحواف</label><div class="sg"><input type="range" min="0" max="50" step="1" value="10" id="recvid-softness"><span class="sv" id="recvid-softness-v">10</span></div></div>
+            </div>
+            <span class="note" style="display:block;margin-top:4px;font-size:9px">💡 الأسود والأبيض يستخدمان مقياس السطوع، الألوان الأخرى تستخدم YCbCr. زِد العتبة إذا بقي إطار.</span>
+
+            <button class="btn btn-g bsm" id="recvid-remove" style="margin-top:6px;width:100%">🗑️ إزالة الفيديو</button>
+          </div>
+        </div>
       </div>
 
       <!-- SCENE -->
@@ -717,6 +768,31 @@ body.offline .offline-badge{display:block}
         </div>
 
         <div class="sec">
+          <div class="sec-t">🎭 Chromakey (شاشة خضراء) <span class="badge-new">v3.2</span></div>
+          <div class="note">يحذف لوناً محدّداً من خلفية الصورة/الفيديو ويستبدله بالتدرّج. مفيد لدمج لقطات الشاشة الخضراء مع خلفية إسلاميّة.</div>
+          <div class="tgg">
+            <span class="tgl">تفعيل Chromakey</span>
+            <label class="tg"><input type="checkbox" id="chromakey-on"><span class="tgs"></span></label>
+          </div>
+          <div id="chromakey-ctrl" style="display:none;padding-top:5px">
+            <div class="grid2">
+              <div class="fg"><label class="fl">اللون المراد حذفه</label>
+                <div style="display:flex;gap:5px;align-items:center">
+                  <div class="cpg" style="flex:1"><input type="color" id="chromakey-color" value="#00b140"></div>
+                  <button class="btn btn-g bsm" id="chromakey-preset-green" title="أخضر قياسيّ">🟢</button>
+                  <button class="btn btn-g bsm" id="chromakey-preset-blue" title="أزرق قياسيّ">🔵</button>
+                </div>
+              </div>
+              <div class="fg"><label class="fl">التشابه (similarity)</label><div class="sg"><input type="range" min="0" max="100" step="1" value="30" id="chromakey-similarity"><span class="sv" id="chromakey-similarity-v">30</span></div></div>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">النعومة (smoothness)</label><div class="sg"><input type="range" min="0" max="100" step="1" value="15" id="chromakey-smoothness"><span class="sv" id="chromakey-smoothness-v">15</span></div></div>
+              <div class="fg"><label class="fl">إزالة الانعكاس (spill)</label><div class="sg"><input type="range" min="0" max="100" step="1" value="20" id="chromakey-spill"><span class="sv" id="chromakey-spill-v">20</span></div></div>
+            </div>
+            <span class="note" style="display:block;margin-top:4px;font-size:9px">💡 ابدأ بالقيم الافتراضيّة. زِد التشابه إذا بقيت آثار. زِد النعومة لحواف ناعمة. زِد إزالة الانعكاس لتقليل اللون المتسرّب على الموضوع.</span>
+          </div>
+        </div>
+        <div class="sec">
           <div class="sec-t">🎞️ حركة الخلفية</div>
           <div class="rg c2">
             <div class="rc"><input type="radio" name="bgm" id="bgm1" value="static" checked><label for="bgm1"><span class="ri">⏸️</span><span>ثابت</span></label></div>
@@ -816,15 +892,6 @@ body.offline .offline-badge{display:block}
           </div>
         </div>
         <div class="sec">
-          <div class="sec-t">🖋️ الخط</div>
-          <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
-            <span style="font-size:9px;color:var(--t3);flex:1">من مجلد <code style="color:var(--al)">fonts/</code></span>
-            <button class="btn btn-g bsm" id="refresh-fonts-btn">🔄 تحديث الخطوط</button>
-          </div>
-          <div class="font-grid" id="font-grid"></div>
-          <div class="fu-area"><input type="file" accept=".ttf,.otf,.woff,.woff2" multiple id="custom-fonts-input"><div class="fu-icon">➕</div><div class="fu-txt">رفع خط مخصص <span class="badge-new">جديد</span><br><small>TTF · OTF · WOFF · WOFF2</small></div></div>
-        </div>
-        <div class="sec">
           <div class="sec-t">🎨 تنسيق النص</div>
           <div class="grid2">
             <div class="fg"><label class="fl">لون النص</label><div class="cpg"><input type="color" id="txt-col" value="#ffffff"></div></div>
@@ -833,6 +900,15 @@ body.offline .offline-badge{display:block}
           <div class="fg"><label class="fl">حجم الخط</label><div class="sg"><input type="range" min="40" max="200" value="100" id="fsize"><span class="sv" id="fsize-v">100%</span></div></div>
           <div class="fg"><label class="fl">ارتفاع السطر</label><div class="sg"><input type="range" min="1" max="3" step=".1" value="1.6" id="lh"><span class="sv" id="lh-v">1.6</span></div></div>
           <div class="fg"><label class="fl">موضع النص</label><div class="rg"><div class="rc"><input type="radio" name="tpos" id="tp1" value="top"><label for="tp1"><span class="ri">⬆</span><span>أعلى</span></label></div><div class="rc"><input type="radio" name="tpos" id="tp2" value="center" checked><label for="tp2"><span class="ri">⬛</span><span>وسط</span></label></div><div class="rc"><input type="radio" name="tpos" id="tp3" value="bottom"><label for="tp3"><span class="ri">⬇</span><span>أسفل</span></label></div></div></div>
+        </div>
+        <div class="sec">
+          <div class="sec-t">🖋️ الخط</div>
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px">
+            <span style="font-size:9px;color:var(--t3);flex:1">من مجلد <code style="color:var(--al)">fonts/</code></span>
+            <button class="btn btn-g bsm" id="refresh-fonts-btn">🔄 تحديث الخطوط</button>
+          </div>
+          <div class="font-grid" id="font-grid"></div>
+          <div class="fu-area"><input type="file" accept=".ttf,.otf,.woff,.woff2" multiple id="custom-fonts-input"><div class="fu-icon">➕</div><div class="fu-txt">رفع خط مخصص <span class="badge-new">جديد</span><br><small>TTF · OTF · WOFF · WOFF2</small></div></div>
         </div>
         <div class="sec">
           <div class="sec-t">✨ تأثير النص</div>
@@ -975,6 +1051,26 @@ body.offline .offline-badge{display:block}
             </div>
           </div>
           <button class="btn btn-d bsm" id="remove-logo-btn" style="margin-top:5px;">🗑️ إزالة الشعار</button>
+
+          <!-- v3.2 — Chromakey للشعار -->
+          <div class="tgg" style="margin-top:8px;background:var(--bg2);border:1px solid var(--p);border-radius:var(--r);padding:6px 8px">
+            <span class="tgl">🎭 إزالة خلفيّة الشعار (Chromakey)<br><small style="color:var(--t3)">يجعل لوناً محدّداً شفّافاً — مفيد للشعارات بدون قناة ألفا</small></span>
+            <label class="tg"><input type="checkbox" id="logo-chroma-on"><span class="tgs"></span></label>
+          </div>
+          <div id="logo-chroma-ctrl" style="display:none;margin-top:5px">
+            <div class="fg"><label class="fl">لون الخلفيّة المراد إزالته</label>
+              <div style="display:flex;gap:5px;align-items:center">
+                <div class="cpg" style="flex:1"><input type="color" id="logo-chroma-color" value="#ffffff"></div>
+                <button class="btn btn-g bsm" id="logo-chroma-white" title="أبيض">⚪</button>
+                <button class="btn btn-g bsm" id="logo-chroma-black" title="أسود">⚫</button>
+                <button class="btn btn-g bsm" id="logo-chroma-green" title="أخضر">🟢</button>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">العتبة</label><div class="sg"><input type="range" min="0" max="100" step="1" value="25" id="logo-chroma-threshold"><span class="sv" id="logo-chroma-threshold-v">25</span></div></div>
+              <div class="fg"><label class="fl">نعومة الحواف</label><div class="sg"><input type="range" min="0" max="50" step="1" value="10" id="logo-chroma-softness"><span class="sv" id="logo-chroma-softness-v">10</span></div></div>
+            </div>
+          </div>
         </div>
         <div class="sec">
           <div class="sec-t">📊 الموجات الصوتية</div>
@@ -1297,7 +1393,7 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">📋 المشروع</div>
-          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.1.0</span></div>
+          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.2.0</span></div>
           <div class="info-row"><span class="info-k">المطور</span><span class="info-v"><a href="https://github.com/SalehGnuTux" target="_blank">@SalehGnuTux</a></span></div>
           <div class="info-row"><span class="info-k">المستودع</span><span class="info-v"><a href="https://github.com/SalehGnuTux/GT-SQRM" target="_blank">GitHub/GT-SQRM</a></span></div>
           <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv3

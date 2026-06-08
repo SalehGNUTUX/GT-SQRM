@@ -148,12 +148,64 @@ function createWindow() {
     }
   });
 
+  // v3.1 — حماية الإغلاق مع modal مخصّص
+  mainWindow.on("close", (e) => {
+    if (mainWindow._allowClose) return;
+    e.preventDefault();
+    mainWindow.webContents.send("request-close-confirm");
+  });
+
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
 }
 
-app.whenReady().then(createWindow);
+ipcMain.handle("confirm-close", () => {
+  if (mainWindow) { mainWindow._allowClose = true; mainWindow.close(); }
+});
+
+// v3.1 — فتح ملفّ .gtsqrm من سطر الأوامر أو File Association
+let _pendingProjectFile = null;
+function extractProjectFileArg(argv) {
+  for (const a of argv.slice(1)) {
+    if (a && a.toLowerCase().endsWith(".gtsqrm") && fs.existsSync(a)) return a;
+  }
+  return null;
+}
+_pendingProjectFile = extractProjectFileArg(process.argv);
+
+app.on("open-file", (event, filePath) => {
+  event.preventDefault();
+  if (mainWindow && mainWindow.webContents) {
+    mainWindow.webContents.send("project-open-from-disk", filePath);
+  } else {
+    _pendingProjectFile = filePath;
+  }
+});
+
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) {
+  app.quit();
+} else {
+  app.on("second-instance", (_e, argv) => {
+    const f = extractProjectFileArg(argv);
+    if (f && mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.send("project-open-from-disk", f);
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+  });
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  if (_pendingProjectFile && mainWindow) {
+    mainWindow.webContents.once("did-finish-load", () => {
+      mainWindow.webContents.send("project-open-from-disk", _pendingProjectFile);
+      _pendingProjectFile = null;
+    });
+  }
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
@@ -161,6 +213,35 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
+});
+
+// v3.1 — IPC handlers للمشاريع
+ipcMain.handle("project-save-dialog", async (_e, defaultName) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "حفظ المشروع",
+    defaultPath: defaultName || `gt-sqrm-project-${Date.now()}.gtsqrm`,
+    filters: [{ name: "GT-SQRM Project", extensions: ["gtsqrm"] }],
+  });
+  return result.canceled ? null : result.filePath;
+});
+ipcMain.handle("project-open-dialog", async () => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: "فتح مشروع",
+    properties: ["openFile"],
+    filters: [
+      { name: "GT-SQRM Project", extensions: ["gtsqrm"] },
+      { name: "All Files", extensions: ["*"] },
+    ],
+  });
+  return result.canceled ? null : result.filePaths[0];
+});
+ipcMain.handle("project-write", async (_e, filePath, jsonStr) => {
+  try { fs.writeFileSync(filePath, jsonStr, "utf8"); return { ok: true }; }
+  catch (err) { return { ok: false, error: err.message }; }
+});
+ipcMain.handle("project-read", async (_e, filePath) => {
+  try { return { ok: true, content: fs.readFileSync(filePath, "utf8") }; }
+  catch (err) { return { ok: false, error: err.message }; }
 });
 
 // ═══════════════════════════════════════════════════════

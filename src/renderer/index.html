@@ -452,8 +452,10 @@ body.offline .offline-badge{display:block}
     </div>
   </div>
   <div class="hdr-r">
-    <button class="btn btn-g bsm" id="open-tpl-modal-btn">💾 <span>حفظ</span></button>
-    <button class="btn btn-g bsm" id="go-tpl-tab-btn">📂 <span>القوالب</span></button>
+    <button class="btn btn-g bsm" id="proj-save-btn" title="حفظ المشروع كملفّ .gtsqrm">💾 <span>المشروع</span></button>
+    <button class="btn btn-g bsm" id="proj-open-btn" title="فتح ملفّ مشروع .gtsqrm">📂 <span>فتح</span></button>
+    <button class="btn btn-g bsm" id="open-tpl-modal-btn" title="قوالب الإعدادات">🎯 <span>قالب</span></button>
+    <button class="btn btn-g bsm" id="go-tpl-tab-btn" title="إدارة القوالب">📋</button>
     <button id="mob-toggle" title="الأدوات">🛠 الأدوات</button>
   </div>
 </header>
@@ -763,6 +765,33 @@ body.offline .offline-badge{display:block}
 
       <!-- TEXTS -->
       <div class="tp" id="tab-txt">
+        <div class="sec">
+          <div class="sec-t">🎬 عنوان المقطع <span class="badge-new">v3.1</span></div>
+          <div class="tgg">
+            <span class="tgl">إظهار عنوان مخصّص في أعلى الفيديو</span>
+            <label class="tg"><input type="checkbox" id="vtitle-on"><span class="tgs"></span></label>
+          </div>
+          <div id="vtitle-ctrl" style="display:none;padding-top:5px">
+            <div class="fg" style="margin-bottom:6px">
+              <input type="text" class="fc" id="vtitle-text" placeholder="مثال: تأمّلات في سورة البقرة" maxlength="80" dir="rtl">
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">الموضع العمودي</label><div class="sg"><input type="range" min="0" max="40" step="0.5" value="6" id="vtitle-y"><span class="sv" id="vtitle-y-v">6%</span></div></div>
+              <div class="fg"><label class="fl">حجم الخط</label><div class="sg"><input type="range" min="20" max="220" step="5" value="90" id="vtitle-size"><span class="sv" id="vtitle-size-v">90%</span></div></div>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">اللون</label><div class="cpg"><input type="color" id="vtitle-col" value="#ffe082"></div></div>
+              <div class="fg"><label class="fl">التأثير</label>
+                <select class="fc" id="vtitle-fx">
+                  <option value="shadow" selected>ظلّ</option>
+                  <option value="glow">توهّج</option>
+                  <option value="outline">حدود</option>
+                  <option value="none">بدون</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="sec">
           <div class="sec-t">📿 اسم السورة (عنوان علوي)</div>
           <div class="tgg">
@@ -1100,6 +1129,26 @@ body.offline .offline-badge{display:block}
       <!-- SETTINGS -->
       <div class="tp" id="tab-settings">
         <div class="sec">
+          <div class="sec-t">💾 الحفظ التلقائي <span class="badge-new">v3.1</span></div>
+          <div class="note">يحفظ المشروع تلقائياً إلى آخر ملفّ .gtsqrm حدّدته. يجب حفظ المشروع يدوياً أوّل مرة لتحديد المسار.</div>
+          <div class="tgg">
+            <span class="tgl">تفعيل الحفظ التلقائي</span>
+            <label class="tg"><input type="checkbox" id="autosave-on"><span class="tgs"></span></label>
+          </div>
+          <div id="autosave-ctrl" style="display:none;padding-top:5px">
+            <div class="fg"><label class="fl">المدّة بين كلّ حفظ</label>
+              <select class="fc" id="autosave-interval">
+                <option value="1">كلّ دقيقة</option>
+                <option value="5" selected>كلّ 5 دقائق</option>
+                <option value="10">كلّ 10 دقائق</option>
+                <option value="15">كلّ 15 دقيقة</option>
+                <option value="30">كلّ 30 دقيقة</option>
+              </select>
+            </div>
+            <div id="autosave-status" style="font-size:10px;color:var(--t3);margin-top:4px;padding:4px 8px;background:var(--bg1);border-radius:var(--r)">⏸️ غير مُفعَّل</div>
+          </div>
+        </div>
+        <div class="sec">
           <div class="sec-t">🎯 قالب جاهز للمنصة</div>
           <div class="fg">
             <select class="fc" id="preset-sel">
@@ -1248,7 +1297,7 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">📋 المشروع</div>
-          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.0.0</span></div>
+          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.1.0</span></div>
           <div class="info-row"><span class="info-k">المطور</span><span class="info-v"><a href="https://github.com/SalehGnuTux" target="_blank">@SalehGnuTux</a></span></div>
           <div class="info-row"><span class="info-k">المستودع</span><span class="info-v"><a href="https://github.com/SalehGnuTux/GT-SQRM" target="_blank">GitHub/GT-SQRM</a></span></div>
           <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv3
@@ -1347,6 +1396,32 @@ body.offline .offline-badge{display:block}
   </div>
 </div>
 
+<!-- v3.1 — نافذة تأكيد الإغلاق -->
+<div id="close-confirm-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.78);align-items:center;justify-content:center">
+  <div style="background:var(--bg0);border:1px solid var(--b1);border-radius:var(--r);padding:18px;max-width:420px;width:92%;direction:rtl;text-align:center">
+    <div style="font-size:36px;margin-bottom:8px">⚠️</div>
+    <h3 style="margin:0 0 8px 0;color:var(--al);font-size:15px">تغييرات غير محفوظة</h3>
+    <p style="font-size:11px;color:var(--t2);margin:0 0 16px 0">لديك تغييرات لم تُحفظ في المشروع. ماذا تريد أن تفعل؟</p>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="btn btn-g" id="close-confirm-save" style="background:var(--al);color:#000;font-weight:700">💾 حفظ ثم إغلاق</button>
+      <button class="btn btn-g" id="close-confirm-quit" style="background:#a33">⚠️ إنهاء دون حفظ</button>
+      <button class="btn btn-g" id="close-confirm-cancel">↩️ إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- v3.1 — نافذة المصادر المفقودة عند الاستيراد -->
+<div id="missing-assets-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
+  <div style="background:var(--bg0);border:1px solid var(--b1);border-radius:var(--r);padding:16px;max-width:560px;width:92%;max-height:80vh;overflow-y:auto;direction:rtl">
+    <h3 style="margin:0 0 10px 0;color:var(--al);font-size:15px">⚠️ مصادر مفقودة في المشروع</h3>
+    <p style="font-size:11px;color:var(--t2);margin:0 0 10px 0">المصادر التالية لم يستطع البرنامج العثور عليها. يمكنك اختيار بديل لكلّ منها أو تجاوزها.</p>
+    <div id="missing-assets-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px"></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end">
+      <button class="btn btn-g bsm" id="missing-assets-skip">تخطّي الكلّ</button>
+      <button class="btn btn-g bsm" id="missing-assets-apply">تطبيق</button>
+    </div>
+  </div>
+</div>
 <script src="export-engine.js"></script>
 <script src="ytdlp-panel.js"></script>
 <script src="app.js"></script>

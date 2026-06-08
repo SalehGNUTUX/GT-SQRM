@@ -54,6 +54,15 @@ contextBridge.exposeInMainWorld("SQRM", {
   // ── قراءة ملفات محلية (للخطوط/الموارد) ──────────────
   readLocalFile: (rel) => ipcRenderer.invoke("read-local-file", rel),
 
+  // ── v3.1 — حفظ/فتح المشاريع ──────────────────────
+  projectSaveDialog: (defaultName) => ipcRenderer.invoke("project-save-dialog", defaultName),
+  projectOpenDialog: ()             => ipcRenderer.invoke("project-open-dialog"),
+  projectWrite:      (p, json)      => ipcRenderer.invoke("project-write", p, json),
+  projectRead:       (p)            => ipcRenderer.invoke("project-read", p),
+  onProjectOpenFromDisk: (cb)       => ipcRenderer.on("project-open-from-disk", (_e, p) => cb(p)),
+  onRequestCloseConfirm: (cb)       => ipcRenderer.on("request-close-confirm", () => cb()),
+  confirmClose:          ()         => ipcRenderer.invoke("confirm-close"),
+
   // ── نسخة التطبيق ──────────────────────────────────
   version: process.env.npm_package_version || "1.2.0",
   isDesktop: true, // علامة للواجهة: هذا تطبيق سطح مكتب وليس متصفحاً

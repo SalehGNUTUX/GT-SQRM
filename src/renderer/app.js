@@ -298,6 +298,13 @@ function initEventListeners() {
     const ctrl = $("sname-ctrl");
     if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
   });
+
+  // v3.1 — لوحة عنوان المقطع
+  const vtitleOn = $("vtitle-on");
+  if (vtitleOn) vtitleOn.addEventListener("change", (e) => {
+    const ctrl = $("vtitle-ctrl");
+    if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
+  });
   const surahSel = $("surah-sel");
   if (surahSel) surahSel.addEventListener("change", onSurahChange);
 
@@ -330,6 +337,8 @@ function initEventListeners() {
     { id: "trans-dur", outId: "trans-dur-v", unit: "s" },
     { id: "aya-gap", outId: "aya-gap-v", unit: "s" },
     { id: "wave-gain", outId: "wave-gain-v", unit: "%" },
+    { id: "vtitle-y", outId: "vtitle-y-v", unit: "%" },
+    { id: "vtitle-size", outId: "vtitle-size-v", unit: "%" },
     { id: "sname-y", outId: "sname-y-v", unit: "%" },
     { id: "sname-size", outId: "sname-size-v", unit: "%" },
     { id: "orn-op", outId: "orn-op-v", unit: "%" },
@@ -691,6 +700,7 @@ function drawFrame(ts) {
   if (ge("fx-oldfilm")) applyOldFilm(ctx, W, H, ts);
   if (S.verses.length) drawVerse(ctx, W, H, ts);
   drawSurahName(ctx, W, H);
+  drawVideoTitle(ctx, W, H);
   drawWave(ctx, W, H, ts);
   drawLogo(ctx, W, H);
   drawWatermark(ctx, W, H);
@@ -1374,6 +1384,42 @@ function drawLogo(ctx, W, H) {
 //  VERSE RENDERING
 // ══════════════════════════════════════════════════════
 // ── رسم اسم السورة في أعلى المقطع ─────────────────
+// v3.1 — عنوان مخصّص للمقطع
+function drawVideoTitle(ctx, W, H) {
+  if (!ge("vtitle-on")) return;
+  const text = ($("vtitle-text")?.value || "").trim();
+  if (!text) return;
+  const font = fontVal();
+  const fsz = W * 0.055 * ((parseFloat(gv("vtitle-size")) || 90) / 100);
+  const yPct = parseFloat(gv("vtitle-y")) || 6;
+  const y = (yPct / 100) * H + fsz;
+  const col = $("vtitle-col")?.value || "#ffe082";
+  const fx = $("vtitle-fx")?.value || "shadow";
+  ctx.save();
+  ctx.font = `bold ${fsz}px ${font}`;
+  ctx.fillStyle = col;
+  ctx.textAlign = "center";
+  ctx.direction = "rtl";
+  if (fx === "shadow") {
+    ctx.shadowColor = "rgba(0,0,0,.75)";
+    ctx.shadowBlur = 12; ctx.shadowOffsetY = 3;
+    ctx.fillText(text, W / 2, y);
+  } else if (fx === "glow") {
+    ctx.shadowColor = col; ctx.shadowBlur = 24;
+    ctx.fillText(text, W / 2, y);
+    ctx.shadowBlur = 0; ctx.fillText(text, W / 2, y);
+  } else if (fx === "outline") {
+    ctx.lineJoin = "round"; ctx.miterLimit = 2;
+    ctx.lineWidth = Math.max(2, fsz * 0.06);
+    ctx.strokeStyle = "rgba(0,0,0,.85)";
+    ctx.strokeText(text, W / 2, y);
+    ctx.fillText(text, W / 2, y);
+  } else {
+    ctx.fillText(text, W / 2, y);
+  }
+  ctx.restore();
+}
+
 function drawSurahName(ctx, W, H) {
   if (!ge("sname-on")) return;
   if (!S.surahs || !S.surahs.length) return;
@@ -2217,6 +2263,7 @@ function onBgAudio(input) {
   a.loop = ge("bg-loop");
   a.volume = gv("bg-vol") / 100;
   S.bgAudioEl = a;
+  S.bgAudioFile = file; // v3.1
   resumeAudioCtx().then(ctx => {
     try {
       const src = ctx.createMediaElementSource(a);
@@ -2255,6 +2302,7 @@ function onBgMedia(input, type) {
     img.onload = () => { S.bgImg = img; toast("🖼️ تم تحميل الصورة", "success"); };
     img.onerror = () => toast("❌ فشل تحميل الصورة", "error");
     img.src = url;
+    S.bgImgFile = file; // v3.1
     const thumb = $("bg-img-thumb");
     $("bg-img-preview").src = url;
     thumb.style.display = "block";
@@ -4626,3 +4674,332 @@ function toast(msg, type = "info", duration = 3600) {
   $("toast-c").appendChild(el);
   setTimeout(() => el.remove(), duration);
 }
+
+// ═══════════════════════════════════════════════════════
+//  v3.1 — حفظ/فتح المشاريع (.gtsqrm)
+// ═══════════════════════════════════════════════════════
+const PROJECT_FORMAT = "GT-SQRM-Project";
+const PROJECT_FORMAT_VERSION = 1;
+const ASSET_EMBED_MAX = 50 * 1024 * 1024;
+const PROJECT_APP_VERSION = "3.1.0";
+const IS_DESKTOP_BUILD = !!(window.SQRM && window.SQRM.isDesktop);
+let _autoSaveTimer = null;
+
+function markProjectDirty() { S.projectDirty = true; updateProjectTitle(); }
+function clearProjectDirty() { S.projectDirty = false; updateProjectTitle(); }
+function updateProjectTitle() {
+  const base = S.projectFileName || "بدون اسم";
+  const dirty = S.projectDirty ? " ●" : "";
+  document.title = `${base}${dirty} — GT-SQRM`;
+  const sub = document.getElementById("app-subtitle");
+  if (sub && S.projectFileName) sub.textContent = `📁 ${base}${dirty}`;
+}
+function fileToDataURL(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result); r.onerror = () => rej(r.error);
+    r.readAsDataURL(file);
+  });
+}
+function dataURLToBlob(dataURL) {
+  const [meta, b64] = dataURL.split(",");
+  const mime = (meta.match(/data:([^;]+)/) || [, "application/octet-stream"])[1];
+  const bin = atob(b64);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Blob([u8], { type: mime });
+}
+
+async function serializeProject() {
+  const byId = {}, byName = {};
+  document.querySelectorAll("input, select, textarea").forEach(el => {
+    if (el.type === "file" || el.type === "button" || el.type === "submit") return;
+    if (el.type === "checkbox" || el.type === "radio") {
+      if (el.id) byId[el.id] = el.checked;
+      if (el.name && (el.type !== "radio" || el.checked)) byName[el.name] = el.value;
+    } else {
+      if (el.id) byId[el.id] = el.value;
+    }
+  });
+  const assets = [];
+  if (Array.isArray(S.bgVidItems)) {
+    for (let i = 0; i < S.bgVidItems.length; i++) {
+      const item = S.bgVidItems[i];
+      const a = {
+        key: `bgVideo[${i}]`, name: item.name || `video-${i}.mp4`,
+        size: item.file?.size || 0, mime: item.file?.type || "video/mp4",
+        active: i === S.bgVidActiveIdx,
+        audioEnabled: !!item.audioEnabled, audioGain: item.audioGain ?? 0.5,
+      };
+      if (item.file && item.file.size <= ASSET_EMBED_MAX) {
+        a.mode = "embedded"; a.dataURL = await fileToDataURL(item.file);
+      } else { a.mode = "missing"; a.reason = item.file ? "حجم أكبر من 50MB" : "غير متوفّر"; }
+      assets.push(a);
+    }
+  }
+  if (S.bgImgFile) {
+    const a = { key: "bgImage", name: S.bgImgFile.name || "bg.jpg", size: S.bgImgFile.size || 0, mime: S.bgImgFile.type || "image/jpeg" };
+    if (S.bgImgFile.size <= ASSET_EMBED_MAX) { a.mode = "embedded"; a.dataURL = await fileToDataURL(S.bgImgFile); }
+    else { a.mode = "missing"; a.reason = "حجم أكبر من 50MB"; }
+    assets.push(a);
+  }
+  if (S.bgAudioFile) {
+    const a = { key: "bgAudio", name: S.bgAudioFile.name || "audio.mp3", size: S.bgAudioFile.size || 0, mime: S.bgAudioFile.type || "audio/mpeg" };
+    if (S.bgAudioFile.size <= ASSET_EMBED_MAX) { a.mode = "embedded"; a.dataURL = await fileToDataURL(S.bgAudioFile); }
+    else { a.mode = "missing"; a.reason = "حجم أكبر من 50MB"; }
+    assets.push(a);
+  }
+  const logoDataURL = localStorage.getItem("gt_sqrm_logo_v1");
+  if (logoDataURL) assets.push({ key: "logo", name: "logo.png", mode: "embedded", dataURL: logoDataURL });
+  return {
+    format: PROJECT_FORMAT, formatVersion: PROJECT_FORMAT_VERSION,
+    appVersion: PROJECT_APP_VERSION, platform: IS_DESKTOP_BUILD ? "desktop" : "web",
+    savedAt: new Date().toISOString(),
+    settings: { byId, byName }, assets,
+  };
+}
+
+async function deserializeProject(proj) {
+  if (!proj || proj.format !== PROJECT_FORMAT) throw new Error("ملفّ مشروع غير صالح");
+  const byId = proj.settings?.byId || {}, byName = proj.settings?.byName || {};
+  for (const [id, value] of Object.entries(byId)) {
+    const el = document.getElementById(id);
+    if (!el) continue;
+    if (el.type === "checkbox") el.checked = !!value;
+    else if (el.type === "radio") { }
+    else el.value = value;
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+  }
+  for (const [name, value] of Object.entries(byName)) {
+    document.querySelectorAll(`input[name="${name}"]`).forEach(el => {
+      if (el.type === "radio") {
+        el.checked = (el.value === value);
+        if (el.checked) el.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
+  }
+  const missing = [];
+  for (const a of (proj.assets || [])) {
+    if (a.mode === "embedded" && a.dataURL) await restoreAssetFromDataURL(a);
+    else missing.push(a);
+  }
+  if (missing.length) showMissingAssetsModal(missing);
+  clearProjectDirty();
+  return { restored: (proj.assets || []).length - missing.length, missing: missing.length };
+}
+
+async function restoreAssetFromDataURL(asset) {
+  const blob = dataURLToBlob(asset.dataURL);
+  const file = new File([blob], asset.name, { type: asset.mime || blob.type });
+  const fakeInput = { files: [file], value: "" };
+  if (asset.key === "logo") {
+    try { localStorage.setItem("gt_sqrm_logo_v1", asset.dataURL); } catch (_) {}
+    if (typeof restoreLogo === "function") restoreLogo();
+  } else if (asset.key === "bgImage") {
+    if (typeof onBgMedia === "function") onBgMedia(fakeInput, "image");
+  } else if (asset.key === "bgAudio") {
+    if (typeof onBgAudio === "function") onBgAudio(fakeInput);
+  } else if (asset.key && asset.key.startsWith("bgVideo[")) {
+    if (typeof addBgVidItem === "function") {
+      addBgVidItem(file);
+      setTimeout(() => {
+        if (Array.isArray(S.bgVidItems) && S.bgVidItems.length) {
+          const last = S.bgVidItems[S.bgVidItems.length - 1];
+          if (last) {
+            if (asset.audioEnabled !== undefined) last.audioEnabled = !!asset.audioEnabled;
+            if (asset.audioGain !== undefined) last.audioGain = asset.audioGain;
+            if (typeof renderBgVidList === "function") renderBgVidList();
+          }
+        }
+      }, 250);
+    }
+  }
+}
+
+function showMissingAssetsModal(missing) {
+  const modal = document.getElementById("missing-assets-modal");
+  const list = document.getElementById("missing-assets-list");
+  if (!modal || !list) return;
+  const replacements = new Map();
+  list.innerHTML = missing.map((a, i) => {
+    const acc = a.key === "bgImage" ? "image/*" : a.key === "bgAudio" ? "audio/*"
+              : (a.key || "").startsWith("bgVideo") ? "video/*" : a.key === "logo" ? "image/*" : "*/*";
+    return `<div style="padding:8px;background:var(--bg1);border-radius:var(--r);border:1px solid var(--b1)">
+        <div style="font-size:11px;color:var(--t1);margin-bottom:4px"><b style="color:var(--al)">${a.key}</b> — ${a.name || ""}</div>
+        <div style="font-size:10px;color:var(--t3);margin-bottom:6px">السبب: ${a.reason || "غير متوفّر"}</div>
+        <input type="file" data-missing-idx="${i}" accept="${acc}" style="font-size:10px;width:100%"></div>`;
+  }).join("");
+  list.querySelectorAll("input[data-missing-idx]").forEach(inp => {
+    inp.addEventListener("change", (e) => {
+      const idx = parseInt(inp.dataset.missingIdx);
+      const f = e.target.files?.[0]; if (f) replacements.set(idx, f);
+    });
+  });
+  modal.style.display = "flex";
+  const close = () => { modal.style.display = "none"; };
+  document.getElementById("missing-assets-skip").onclick = () => { toast(`⏭️ تخطّي ${missing.length} مصدر`, "info", 1800); close(); };
+  document.getElementById("missing-assets-apply").onclick = async () => {
+    let n = 0;
+    for (const [idx, file] of replacements.entries()) {
+      const orig = missing[idx];
+      const fakeAsset = { ...orig, dataURL: await fileToDataURL(file), mode: "embedded", name: file.name, mime: file.type };
+      await restoreAssetFromDataURL(fakeAsset); n++;
+    }
+    toast(`✅ تمّ استبدال ${n} مصدر`, "success", 2000); close();
+  };
+}
+
+async function saveProjectToPath(filePath) {
+  const proj = await serializeProject();
+  const json = JSON.stringify(proj, null, 2);
+  if (IS_DESKTOP_BUILD && filePath) {
+    const r = await window.SQRM.projectWrite(filePath, json);
+    if (!r.ok) { toast(`❌ فشل الحفظ: ${r.error}`, "error", 3000); return false; }
+    S.projectFilePath = filePath;
+    S.projectFileName = filePath.split(/[\\/]/).pop();
+    try { localStorage.setItem("gt_sqrm_last_project", filePath); } catch (_) {}
+  } else {
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const fname = (S.projectFileName || `gt-sqrm-project-${Date.now()}.gtsqrm`).replace(/\.json$/, ".gtsqrm");
+    a.href = url; a.download = fname; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    S.projectFileName = fname;
+  }
+  clearProjectDirty();
+  return true;
+}
+async function saveProjectInteractive() {
+  if (IS_DESKTOP_BUILD) {
+    const fp = await window.SQRM.projectSaveDialog(S.projectFileName || null);
+    if (!fp) return;
+    const fixed = fp.endsWith(".gtsqrm") ? fp : fp + ".gtsqrm";
+    const ok = await saveProjectToPath(fixed);
+    if (ok) toast(`💾 تمّ الحفظ: ${fixed.split(/[\\/]/).pop()}`, "success", 2200);
+  } else {
+    const ok = await saveProjectToPath(null);
+    if (ok) toast("💾 تمّ تنزيل ملفّ المشروع", "success", 2200);
+  }
+}
+async function openProjectInteractive() {
+  if (S.projectDirty && !confirm("لديك تغييرات غير محفوظة. متابعة؟")) return;
+  if (IS_DESKTOP_BUILD) {
+    const fp = await window.SQRM.projectOpenDialog();
+    if (fp) await openProjectFromPath(fp);
+  } else {
+    document.getElementById("proj-open-input")?.click();
+  }
+}
+async function openProjectFromPath(filePath) {
+  if (!IS_DESKTOP_BUILD) return;
+  const r = await window.SQRM.projectRead(filePath);
+  if (!r.ok) { toast(`❌ فشل الفتح: ${r.error}`, "error", 3000); return; }
+  try {
+    const proj = JSON.parse(r.content);
+    const result = await deserializeProject(proj);
+    S.projectFilePath = filePath;
+    S.projectFileName = filePath.split(/[\\/]/).pop();
+    try { localStorage.setItem("gt_sqrm_last_project", filePath); } catch (_) {}
+    updateProjectTitle();
+    toast(`📂 ${S.projectFileName} (${result.restored} مصدر${result.missing ? ` · ⚠️ ${result.missing} مفقود` : ""})`, result.missing ? "warn" : "success", 2800);
+  } catch (e) { toast(`❌ ملفّ غير صالح: ${e.message}`, "error", 3000); }
+}
+async function openProjectFromBlob(file) {
+  if (S.projectDirty && !confirm("لديك تغييرات غير محفوظة. متابعة؟")) return;
+  const text = await file.text();
+  try {
+    const proj = JSON.parse(text);
+    const result = await deserializeProject(proj);
+    S.projectFileName = file.name;
+    updateProjectTitle();
+    toast(`📂 ${file.name} (${result.restored} مصدر${result.missing ? ` · ⚠️ ${result.missing} مفقود` : ""})`, result.missing ? "warn" : "success", 2800);
+  } catch (e) { toast(`❌ ملفّ غير صالح: ${e.message}`, "error", 3000); }
+}
+
+function startAutoSave() {
+  stopAutoSave();
+  const enabled = ge("autosave-on");
+  const intervalMin = parseInt(document.getElementById("autosave-interval")?.value || 5);
+  const status = document.getElementById("autosave-status");
+  if (!enabled) { if (status) status.textContent = "⏸️ غير مُفعَّل"; try { localStorage.setItem("gt_sqrm_autosave_on", "0"); } catch (_) {} return; }
+  if (!S.projectFilePath && IS_DESKTOP_BUILD) { if (status) status.textContent = "⚠️ احفظ المشروع يدوياً أوّل مرة"; return; }
+  try { localStorage.setItem("gt_sqrm_autosave_on", "1"); localStorage.setItem("gt_sqrm_autosave_interval", String(intervalMin)); } catch (_) {}
+  if (status) status.textContent = `🟢 مُفعَّل — كلّ ${intervalMin} دقيقة`;
+  _autoSaveTimer = setInterval(async () => {
+    if (!S.projectDirty) return;
+    if (IS_DESKTOP_BUILD && S.projectFilePath) {
+      const ok = await saveProjectToPath(S.projectFilePath);
+      if (ok) toast(`💾 حفظ تلقائيّ — ${new Date().toLocaleTimeString("ar")}`, "info", 1500);
+    } else if (!IS_DESKTOP_BUILD) {
+      try { const json = JSON.stringify(await serializeProject()); if (json.length < 4_500_000) { localStorage.setItem("gt_sqrm_autosave_blob", json); toast(`💾 حفظ تلقائيّ في المتصفّح`, "info", 1500); } } catch (_) {}
+    }
+  }, intervalMin * 60 * 1000);
+}
+function stopAutoSave() { if (_autoSaveTimer) { clearInterval(_autoSaveTimer); _autoSaveTimer = null; } }
+
+function showCloseConfirmModal() {
+  const modal = document.getElementById("close-confirm-modal");
+  if (!modal) {
+    if (confirm("لديك تغييرات غير محفوظة. حفظ قبل الإغلاق؟")) saveProjectInteractive().then(() => { if (!S.projectDirty && IS_DESKTOP_BUILD) window.SQRM?.confirmClose(); });
+    else if (IS_DESKTOP_BUILD) window.SQRM?.confirmClose();
+    return;
+  }
+  modal.style.display = "flex";
+  const close = () => { modal.style.display = "none"; };
+  document.getElementById("close-confirm-cancel").onclick = close;
+  document.getElementById("close-confirm-quit").onclick = () => { close(); if (IS_DESKTOP_BUILD) window.SQRM.confirmClose(); };
+  document.getElementById("close-confirm-save").onclick = async () => { close(); await saveProjectInteractive(); if (!S.projectDirty && IS_DESKTOP_BUILD) window.SQRM.confirmClose(); };
+}
+
+function initProjectSystem() {
+  document.getElementById("proj-save-btn")?.addEventListener("click", saveProjectInteractive);
+  document.getElementById("proj-open-btn")?.addEventListener("click", openProjectInteractive);
+  document.getElementById("proj-open-input")?.addEventListener("change", (e) => {
+    const f = e.target.files?.[0]; if (f) openProjectFromBlob(f);
+    e.target.value = "";
+  });
+  const autosaveOn = document.getElementById("autosave-on");
+  if (autosaveOn) {
+    try { autosaveOn.checked = localStorage.getItem("gt_sqrm_autosave_on") === "1"; } catch (_) {}
+    autosaveOn.addEventListener("change", () => {
+      const ctrl = document.getElementById("autosave-ctrl");
+      if (ctrl) ctrl.style.display = autosaveOn.checked ? "block" : "none";
+      startAutoSave();
+    });
+    autosaveOn.dispatchEvent(new Event("change"));
+  }
+  document.getElementById("autosave-interval")?.addEventListener("change", () => { if (ge("autosave-on")) startAutoSave(); });
+  try {
+    const savedIv = localStorage.getItem("gt_sqrm_autosave_interval");
+    if (savedIv && document.getElementById("autosave-interval")) document.getElementById("autosave-interval").value = savedIv;
+  } catch (_) {}
+  if (IS_DESKTOP_BUILD && window.SQRM.onRequestCloseConfirm) {
+    window.SQRM.onRequestCloseConfirm(() => {
+      if (!S.projectDirty) { window.SQRM.confirmClose(); return; }
+      showCloseConfirmModal();
+    });
+  } else {
+    window.addEventListener("beforeunload", (e) => {
+      if (S.projectDirty) { e.preventDefault(); e.returnValue = "لديك تغييرات غير محفوظة."; return e.returnValue; }
+    });
+  }
+  if (IS_DESKTOP_BUILD && window.SQRM.onProjectOpenFromDisk) {
+    window.SQRM.onProjectOpenFromDisk((fp) => openProjectFromPath(fp));
+  }
+  const trackInputs = () => {
+    document.querySelectorAll("input, select, textarea").forEach(el => {
+      if (el._dirtyTracked) return;
+      if (el.type === "button" || el.type === "submit" || el.type === "file") return;
+      el._dirtyTracked = true;
+      const handler = () => markProjectDirty();
+      el.addEventListener("change", handler);
+      if (el.type !== "checkbox" && el.type !== "radio") el.addEventListener("input", handler);
+    });
+  };
+  trackInputs(); setTimeout(trackInputs, 2000);
+  updateProjectTitle();
+}
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(initProjectSystem, 100));
+else setTimeout(initProjectSystem, 100);

@@ -941,6 +941,33 @@ function removeBgColorFromRegion(ctx, x, y, w, h, opts) {
 }
 
 // v3.2 — فيديو التلاوة الجاهز
+// v3.3.3 — ضبط الكانفاس على نسبة فيديو التلاوة
+function autoFitCanvasToVideo(vw, vh) {
+  if (!vw || !vh) return;
+  const aspect = vw / vh;
+  const presets = { "9:16": 9 / 16, "16:9": 16 / 9, "1:1": 1, "4:5": 4 / 5 };
+  let bestKey = "9:16", bestDiff = Infinity;
+  for (const [k, ratio] of Object.entries(presets)) {
+    const diff = Math.abs(aspect - ratio);
+    if (diff < bestDiff) { bestDiff = diff; bestKey = k; }
+  }
+  const cv = $("cv");
+  if (!cv) return;
+  if (bestDiff < 0.05) {
+    const radio = document.querySelector(`input[name="fmt"][value="${bestKey}"]`);
+    if (radio && !radio.checked) {
+      radio.checked = true;
+      radio.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+    toast?.(`📐 ضُبط الكانفاس على ${bestKey} (${cv.width}×${cv.height})`, "info", 1800);
+  } else {
+    cv.width = vw;
+    cv.height = vh;
+    if (typeof fitCanvas === "function") fitCanvas();
+    toast?.(`📐 ضُبط الكانفاس على أبعاد الفيديو ${vw}×${vh}`, "info", 1800);
+  }
+}
+
 let _recVidCanvas = null;
 function getRecVidCanvas(W, H) {
   if (!_recVidCanvas) _recVidCanvas = document.createElement("canvas");
@@ -1007,6 +1034,8 @@ function onRecVidFile(input) {
     S.verses = [{ text: "", numberInSurah: 1, number: 1, audio: null, audioSecondary: [], manualDuration: sec, free: true, recvid: true }];
     S.ayaDurations = [sec];
     S.currentAya = 0; S.elapsed = 0;
+    // v3.3.3 — ضبط أبعاد الكانفاس على نسبة فيديو التلاوة
+    autoFitCanvasToVideo(v.videoWidth, v.videoHeight);
     if (typeof updateAyaUI === "function") updateAyaUI();
     toast(`🎥 تمّ تحميل فيديو التلاوة (${sec.toFixed(1)}s)`, "success", 2200);
   };

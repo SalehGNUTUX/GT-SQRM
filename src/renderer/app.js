@@ -854,7 +854,11 @@ function getChromakeyCanvas(W, H) {
 }
 function hexToRgb(hex) {
   const m = (hex || "#00b140").replace("#", "");
-  return { r: parseInt(m.substr(0, 2), 16), g: parseInt(m.substr(2, 2), 16), b: parseInt(m.substr(4, 2), 16) };
+  return {
+    r: parseInt(m.substr(0, 2), 16),
+    g: parseInt(m.substr(2, 2), 16),
+    b: parseInt(m.substr(4, 2), 16),
+  };
 }
 function applyChromakeyToCanvas(ctx, W, H) {
   const colorHex = $("chromakey-color")?.value || "#00b140";
@@ -862,30 +866,43 @@ function applyChromakeyToCanvas(ctx, W, H) {
   const similarity = (parseFloat(gv("chromakey-similarity")) || 30);
   const smoothness = (parseFloat(gv("chromakey-smoothness")) || 15);
   const spill = (parseFloat(gv("chromakey-spill")) || 20) / 100;
+
   const keyCb = -0.168736 * kR - 0.331264 * kG + 0.5 * kB + 128;
   const keyCr = 0.5 * kR - 0.418688 * kG - 0.081312 * kB + 128;
+
+  // النطاق العمليّ للمسافة في YCbCr ~ 0-180. ضربة ×1.5 تعطي توزيعاً مريحاً
   const sim = similarity * 1.5;
   const smooth = Math.max(0.5, smoothness * 1.5);
+
   const img = ctx.getImageData(0, 0, W, H);
   const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
+  const len = d.length;
+  for (let i = 0; i < len; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];
     const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
     const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
     const dx = cb - keyCb, dy = cr - keyCr;
     const dist = Math.sqrt(dx * dx + dy * dy);
+
     let alpha = 1;
     if (dist < sim) alpha = 0;
     else if (dist < sim + smooth) alpha = (dist - sim) / smooth;
+
     d[i + 3] = d[i + 3] * alpha;
+
+    // إزالة الانعكاس اللونيّ على الموضوع (spill suppression)
     if (alpha > 0 && spill > 0) {
+      // اكتشف الـ tint للون المفتاح: اطرح مكوّناً مفرطاً
       if (kG > kR && kG > kB) {
+        // مفتاح أخضر: قلّل الأخضر إذا كان أعلى من المتوسّط بـ r/b
         const avg = (r + b) / 2;
         if (g > avg) d[i + 1] = g + (avg - g) * spill;
       } else if (kB > kR && kB > kG) {
+        // مفتاح أزرق
         const avg = (r + g) / 2;
         if (b > avg) d[i + 2] = b + (avg - b) * spill;
       } else if (kR > kG && kR > kB) {
+        // مفتاح أحمر
         const avg = (g + b) / 2;
         if (r > avg) d[i] = r + (avg - r) * spill;
       }
@@ -900,32 +917,51 @@ function removeBgColorFromRegion(ctx, x, y, w, h, opts) {
   const { r: kR, g: kG, b: kB } = hexToRgb(colorHex);
   const threshold = opts.threshold ?? 25;
   const softness = opts.softness ?? 10;
-  const maxCh = Math.max(kR, kG, kB), minCh = Math.min(kR, kG, kB);
+
+  // اكتشف هل المفتاح رماديّ (لتطبيق منطق السطوع)
+  const maxCh = Math.max(kR, kG, kB);
+  const minCh = Math.min(kR, kG, kB);
   const isGrayscale = (maxCh - minCh) < 25;
   const isDark = isGrayscale && maxCh < 60;
   const isLight = isGrayscale && minCh > 195;
-  let mode, lo, hi, range, keyCb, keyCr, sim, smooth;
+
+  let mode, lo, hi, range;
+  let keyCb, keyCr, sim, smooth;
   if (isDark) {
-    mode = "dark"; lo = threshold * 2.55; hi = lo + softness * 2.55; range = Math.max(0.5, hi - lo);
+    mode = "dark";
+    lo = threshold * 2.55;
+    hi = lo + softness * 2.55;
+    range = Math.max(0.5, hi - lo);
   } else if (isLight) {
-    mode = "light"; hi = 255 - threshold * 2.55; lo = hi - softness * 2.55; range = Math.max(0.5, hi - lo);
+    mode = "light";
+    hi = 255 - threshold * 2.55;
+    lo = hi - softness * 2.55;
+    range = Math.max(0.5, hi - lo);
   } else {
+    // YCbCr للألوان المُشبَعة
     mode = "ycbcr";
     keyCb = -0.168736 * kR - 0.331264 * kG + 0.5 * kB + 128;
     keyCr = 0.5 * kR - 0.418688 * kG - 0.081312 * kB + 128;
-    sim = threshold * 1.5; smooth = Math.max(0.5, softness * 1.5);
+    sim = threshold * 1.5;
+    smooth = Math.max(0.5, softness * 1.5);
   }
+
   const img = ctx.getImageData(x, y, w, h);
   const d = img.data;
-  for (let i = 0; i < d.length; i += 4) {
+  const len = d.length;
+  for (let i = 0; i < len; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];
     let alpha;
     if (mode === "dark") {
       const lum = Math.max(r, g, b);
-      if (lum <= lo) alpha = 0; else if (lum >= hi) alpha = 1; else alpha = (lum - lo) / range;
+      if (lum <= lo) alpha = 0;
+      else if (lum >= hi) alpha = 1;
+      else alpha = (lum - lo) / range;
     } else if (mode === "light") {
       const lum = Math.min(r, g, b);
-      if (lum >= hi) alpha = 0; else if (lum <= lo) alpha = 1; else alpha = (hi - lum) / range;
+      if (lum >= hi) alpha = 0;
+      else if (lum <= lo) alpha = 1;
+      else alpha = (hi - lum) / range;
     } else {
       const cb = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
       const cr = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
@@ -941,32 +977,6 @@ function removeBgColorFromRegion(ctx, x, y, w, h, opts) {
 }
 
 // v3.2 — فيديو التلاوة الجاهز
-// v3.3.3 — ضبط الكانفاس على نسبة فيديو التلاوة
-function autoFitCanvasToVideo(vw, vh) {
-  if (!vw || !vh) return;
-  const aspect = vw / vh;
-  const presets = { "9:16": 9 / 16, "16:9": 16 / 9, "1:1": 1, "4:5": 4 / 5 };
-  let bestKey = "9:16", bestDiff = Infinity;
-  for (const [k, ratio] of Object.entries(presets)) {
-    const diff = Math.abs(aspect - ratio);
-    if (diff < bestDiff) { bestDiff = diff; bestKey = k; }
-  }
-  const cv = $("cv");
-  if (!cv) return;
-  if (bestDiff < 0.05) {
-    const radio = document.querySelector(`input[name="fmt"][value="${bestKey}"]`);
-    if (radio && !radio.checked) {
-      radio.checked = true;
-      radio.dispatchEvent(new Event("change", { bubbles: true }));
-    }
-    toast?.(`📐 ضُبط الكانفاس على ${bestKey} (${cv.width}×${cv.height})`, "info", 1800);
-  } else {
-    cv.width = vw;
-    cv.height = vh;
-    if (typeof fitCanvas === "function") fitCanvas();
-    toast?.(`📐 ضُبط الكانفاس على أبعاد الفيديو ${vw}×${vh}`, "info", 1800);
-  }
-}
 
 let _recVidCanvas = null;
 function getRecVidCanvas(W, H) {
@@ -980,34 +990,37 @@ function drawRecitationVideo(ctx, W, H) {
   if (!v || v.readyState < 2) return;
   const sw = v.videoWidth, sh = v.videoHeight;
   if (!sw || !sh) return;
+
   const fit = $("recvid-fit")?.value || "contain";
   const xPct = parseFloat(gv("recvid-x")) || 0;
   const yPct = parseFloat(gv("recvid-y")) || 0;
   const scale = (parseFloat(gv("recvid-scale")) || 100) / 100;
+
+  // احسب أبعاد الوجهة حسب نمط الملاءمة
   let dw, dh;
   const ir = sw / sh, cr = W / H;
   if (fit === "stretch") { dw = W; dh = H; }
   else if (fit === "actual") { dw = sw; dh = sh; }
   else if (fit === "cover") {
     if (ir > cr) { dh = H; dw = dh * ir; } else { dw = W; dh = dw / ir; }
-  } else {
+  } else { // contain
     if (ir > cr) { dw = W; dh = dw / ir; } else { dh = H; dw = dh * ir; }
   }
   dw *= scale; dh *= scale;
   const dx = (W - dw) / 2 + (xPct / 100) * W;
   const dy = (H - dh) / 2 + (yPct / 100) * H;
+
+  // ارسم الفيديو على canvas off-screen ثم أزل السواد ثم composite
   const tmp = getRecVidCanvas(W, H);
   const tctx = tmp.getContext("2d", { willReadFrequently: true });
   tctx.clearRect(0, 0, W, H);
   tctx.drawImage(v, dx, dy, dw, dh);
+
+  // إزالة السواد على المنطقة المرسومة فقط (لا حاجة لقراءة كامل الـcanvas إن كان dw < W)
   const rx = Math.max(0, Math.floor(dx)), ry = Math.max(0, Math.floor(dy));
   const rw = Math.min(W - rx, Math.ceil(dw)), rh = Math.min(H - ry, Math.ceil(dh));
   if (rw > 0 && rh > 0) {
-    removeBgColorFromRegion(tctx, rx, ry, rw, rh, {
-      colorHex: $("recvid-bgcolor")?.value || "#000000",
-      threshold: parseFloat(gv("recvid-threshold")) || 25,
-      softness: parseFloat(gv("recvid-softness")) || 10,
-    });
+    removeBlackBackground(tctx, rx, ry, rw, rh);
   }
   ctx.drawImage(tmp, 0, 0);
 }
@@ -1017,11 +1030,15 @@ function onRecVidFile(input) {
   removeRecVid();
   const url = URL.createObjectURL(file);
   const v = document.createElement("video");
-  v.src = url; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous";
+  v.src = url;
+  v.playsInline = true;
+  v.preload = "auto";
+  v.crossOrigin = "anonymous";
   v.onloadedmetadata = () => {
     const sec = isFinite(v.duration) ? v.duration : 0;
     const info = $("recvid-info");
     if (info) info.textContent = `✅ ${file.name} · ${v.videoWidth}×${v.videoHeight} · ${sec.toFixed(1)}s · ${(file.size / 1e6).toFixed(1)}MB`;
+    // اربط صوت الفيديو بمسار التصدير + analyser للذبذبات
     resumeAudioCtx().then(ctx => {
       try {
         const src = ctx.createMediaElementSource(v);
@@ -1031,11 +1048,10 @@ function onRecVidFile(input) {
         S.recVidAudioSource = src;
       } catch (_) {}
     }).catch(console.warn);
+    // مدّة الفيديو هي مدّة المقطع — verses = شريحة واحدة
     S.verses = [{ text: "", numberInSurah: 1, number: 1, audio: null, audioSecondary: [], manualDuration: sec, free: true, recvid: true }];
     S.ayaDurations = [sec];
     S.currentAya = 0; S.elapsed = 0;
-    // v3.3.3 — ضبط أبعاد الكانفاس على نسبة فيديو التلاوة
-    autoFitCanvasToVideo(v.videoWidth, v.videoHeight);
     if (typeof updateAyaUI === "function") updateAyaUI();
     toast(`🎥 تمّ تحميل فيديو التلاوة (${sec.toFixed(1)}s)`, "success", 2200);
   };
@@ -1047,7 +1063,10 @@ function onRecVidFile(input) {
 }
 function removeRecVid() {
   if (S.recVidAudioSource) { try { S.recVidAudioSource.disconnect(); } catch (_) {} S.recVidAudioSource = null; }
-  if (S.recVidEl) { try { S.recVidEl.pause(); S.recVidEl.src = ""; } catch (_) {} S.recVidEl = null; }
+  if (S.recVidEl) {
+    try { S.recVidEl.pause(); S.recVidEl.src = ""; } catch (_) {}
+    S.recVidEl = null;
+  }
   S.recVidFile = null;
   const info = $("recvid-info"); if (info) info.textContent = "";
 }

@@ -1,3 +1,20 @@
+## [3.3.4] — 2026-06-07
+
+### مزامنة دوالّ recvid مع GT-SIRM + إلغاء autoFitCanvasToVideo
+
+#### المشكلة
+- v3.3.3 أضافت autoFitCanvasToVideo التي تكسر FMT preset → معاينة وتصدير مشوَّهَين.
+- اختلافات تنسيقيّة في 9 دوالّ recvid بين GT-SQRM و GT-SIRM.
+
+#### الحلّ
+- نُسخت 9 دوالّ بحرفيّة من GT-SIRM v0.7.3 إلى GT-SQRM:
+  - drawRecitationVideo, onRecVidFile, removeRecVid
+  - applyChromakeyToCanvas, removeBgColorFromRegion
+  - getRecVidCanvas, getChromakeyCanvas, getLogoChromaCanvas, hexToRgb
+- التطابق 100% الآن (diff = 0 سطر لكلّ دالّة).
+- حُذفت autoFitCanvasToVideo نهائياً.
+- الكانفاس يبقى عند الـ FMT المختار + فيديو التلاوة يُرسم بداخله مع fit/scale.
+
 ## [3.3.3] — 2026-06-07
 
 ### ضبط أبعاد الكانفاس على نسبة فيديو التلاوة

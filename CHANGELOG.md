@@ -1,3 +1,10 @@
+## [3.3.5] — 2026-06-07
+
+### إصلاح: removeBlackBackground is not defined
+
+drawRecitationVideo المنقولة من GT-SIRM تستخدم removeBlackBackground (alias قديم
+موجود في GT-SIRM فقط). أُضيفت الـ alias هنا أيضاً.
+
 ## [3.3.4] — 2026-06-07
 
 ### مزامنة دوالّ recvid مع GT-SIRM + إلغاء autoFitCanvasToVideo

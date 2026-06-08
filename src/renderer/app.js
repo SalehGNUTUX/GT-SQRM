@@ -976,6 +976,16 @@ function removeBgColorFromRegion(ctx, x, y, w, h, opts) {
   ctx.putImageData(img, x, y);
 }
 
+// alias قديم للتوافق العكسيّ
+function removeBlackBackground(ctx, x, y, w, h) {
+  removeBgColorFromRegion(ctx, x, y, w, h, {
+    colorHex: $("recvid-bgcolor")?.value || "#000000",
+    threshold: parseFloat(gv("recvid-threshold")) || 25,
+    softness: parseFloat(gv("recvid-softness")) || 10,
+  });
+}
+
+
 // v3.2 — فيديو التلاوة الجاهز
 
 let _recVidCanvas = null;

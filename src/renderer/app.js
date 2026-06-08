@@ -197,6 +197,9 @@ function initEventListeners() {
   if (prevAyaBtn) prevAyaBtn.addEventListener("click", prevAya);
   const nextAyaBtn = $("next-aya-btn");
   if (nextAyaBtn) nextAyaBtn.addEventListener("click", nextAya);
+  // v3.3.2 — زرّ إعادة من البداية
+  const restartAllBtn = $("restart-all-btn");
+  if (restartAllBtn) restartAllBtn.addEventListener("click", restartAll);
 
   const pbar = $("pbar");
   if (pbar) pbar.addEventListener("click", seekClick);
@@ -3044,6 +3047,45 @@ function pausePlayer() {
 
 function prevAya() { if (S.currentAya > 0) { S.currentAya--; S.elapsed = 0; updateAyaUI(); if (S.playing) playRecitationAudio(); } }
 function nextAya() { if (S.currentAya < S.verses.length - 1) { S.currentAya++; S.elapsed = 0; updateAyaUI(); if (S.playing) playRecitationAudio(); } }
+
+// v3.3.2 — ↺ زرّ إعادة من البداية — يُعيد كلّ شيء (آيات + صوت + خلفية + recvid)
+function restartAll() {
+  const recvidActive = ge("recvid-on") && S.recVidEl;
+  if (!recvidActive && (!S.verses || !S.verses.length)) {
+    toast?.("⚠️ لا توجد آيات للتشغيل", "warn", 1500);
+    return;
+  }
+  const wasPlaying = !!S.playing;
+  if (S.playing) { try { togglePlay(); } catch (_) {} }
+
+  S.currentAya = 0;
+  S.elapsed = 0;
+
+  // 1) صوت القارئ
+  if (S.recAudioEl) { try { S.recAudioEl.pause(); S.recAudioEl.currentTime = 0; } catch (_) {} }
+  if (S.recAudioSource) { try { S.recAudioSource.onended = null; S.recAudioSource.stop(); } catch (_) {} S.recAudioSource = null; }
+  // 2) صوت الخلفية
+  if (S.bgAudioEl) { try { S.bgAudioEl.pause(); S.bgAudioEl.currentTime = 0; } catch (_) {} }
+  // 3) فيديو الخلفية
+  if (S.bgVid) { try { S.bgVid.pause(); S.bgVid.currentTime = 0; } catch (_) {} }
+  // 4) قائمة فيديوهات الخلفية
+  if (Array.isArray(S.bgVidItems)) {
+    S.bgVidActiveIdx = 0;
+    S.bgVidItems.forEach(it => {
+      if (it.vid) { try { it.vid.pause(); it.vid.currentTime = 0; } catch (_) {} }
+    });
+  }
+  // 5) فيديو التلاوة الجاهز
+  if (S.recVidEl) { try { S.recVidEl.pause(); S.recVidEl.currentTime = 0; } catch (_) {} }
+
+  if (typeof updateAyaInfo === "function") updateAyaInfo();
+  if (typeof updateAyaUI === "function") updateAyaUI();
+  toast?.("↺ إعادة الكلّ من البداية", "info", 1500);
+
+  if (wasPlaying) {
+    setTimeout(() => { try { togglePlay(); } catch (_) {} }, 60);
+  }
+}
 
 function seekClick(e) {
   const bar = $("pbar"), ratio = e.offsetX / bar.offsetWidth;

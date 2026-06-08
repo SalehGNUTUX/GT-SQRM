@@ -3128,9 +3128,18 @@ async function startExport(type) {
   const surahNum = parseInt($("surah-sel").value) || 1;
   const reciter = S.reciters.find(r => r.id === radioVal("reciter")) || S.reciters[0];
   const gainVal = gv("rec-vol") / 100;
+  // v3.3.1 — تخطّى صوت القارئ للفيديو الجاهز
+  const skipReciter = ge("recvid-on") || S.verses.every(v => v?.recvid || v?.free || v?.audio === null);
   let loaded = 0;
 
   const audioBuffers = await Promise.all(S.verses.map(async (aya, i) => {
+    // v3.3.1 — لا تحاول جلب صوت القارئ لشرائح recvid
+    if (skipReciter || aya?.recvid || aya?.free || aya?.audio === null) {
+      S.ayaDurations[i] = aya?.manualDuration || manualDur;
+      loaded++;
+      $("rec-sub").textContent = `⏳ تحضير الشرائح… ${loaded}/${S.verses.length}`;
+      return null;
+    }
     const url = buildAudioUrl(reciter.folder, surahNum, aya.numberInSurah);
     try {
       const res = await fetch(url, { cache: "force-cache" });
@@ -3269,6 +3278,11 @@ async function startExport(type) {
     const playExportAya = (idx) => {
       if (idx >= S.verses.length || S.exportCancel) return;
       const aya2 = S.verses[idx];
+      // v3.3.1
+      if (aya2?.recvid || aya2?.free || aya2?.audio === null || skipReciter) {
+        setTimeout(() => playExportAya(idx + 1), (aya2.manualDuration || manualDur) * 1000);
+        return;
+      }
       const url2 = buildAudioUrl(reciter.folder, surahNum, aya2.numberInSurah);
       const a2 = new Audio(url2);
       a2.volume = gainVal;
@@ -4776,9 +4790,17 @@ async function startExportDesktop(codecKey) {
   const reciter   = S.reciters.find(r => r.id === radioVal("reciter")) || S.reciters[0];
   const recGain   = gv("rec-vol") / 100;
 
+  // v3.3.1 — skipReciter للفيديو الجاهز
+  const skipReciterV2 = ge("recvid-on") || S.verses.every(v => v?.recvid || v?.free || v?.audio === null);
   let loaded = 0;
   const audioBuffers = await Promise.all(S.verses.map(async (aya, i) => {
     if (cancelRef.canceled) return null;
+    if (skipReciterV2 || aya?.recvid || aya?.free || aya?.audio === null) {
+      S.ayaDurations[i] = aya?.manualDuration || manualDur;
+      loaded++;
+      $("rec-sub").textContent = `⏳ تحضير الشرائح… ${loaded}/${S.verses.length}`;
+      return null;
+    }
     const url = buildAudioUrl(reciter.folder, surahNum, aya.numberInSurah);
     try {
       const res = await fetch(url, { cache: "force-cache" });

@@ -488,6 +488,59 @@ body.offline .offline-badge{display:block}
 
       <!-- RECITATION -->
       <div class="tp on" id="tab-rec">
+
+        <!-- ═══ v3.3 — فيديو تلاوة جاهز ═══ -->
+        <div class="sec">
+          <div class="sec-t">🎥 فيديو تلاوة جاهز <span class="badge-new">v3.3</span></div>
+          <div class="note">للمقاطع الجاهزة (صوت + نصّ على خلفيّة لونيّة). يستخدم صوت الفيديو كتلاوة ويعرض النصّ مع إزالة الخلفيّة لإظهار الخلفيّة المخصّصة.</div>
+          <div class="tgg" style="background:var(--bg2);border:1px solid var(--p);border-radius:var(--r);padding:6px 8px;margin-top:6px">
+            <span class="tgl">🎬 استخدام فيديو تلاوة جاهز<br><small style="color:var(--t3)">يحلّ محلّ القارئ الافتراضيّ ويستخدم صوت الفيديو</small></span>
+            <label class="tg"><input type="checkbox" id="recvid-on"><span class="tgs"></span></label>
+          </div>
+          <div id="recvid-ctrl" style="display:none;margin-top:6px">
+            <div class="fu-area" style="margin-bottom:6px">
+              <input type="file" accept="video/*" id="recvid-file">
+              <div class="fu-icon">📥</div>
+              <div class="fu-txt">رفع فيديو التلاوة<br><small>MP4 · WebM · MOV</small></div>
+            </div>
+            <div id="recvid-info" style="font-size:10px;color:var(--t3);margin-bottom:6px;min-height:14px"></div>
+
+            <div style="font-size:11px;color:var(--al);font-weight:700;margin:8px 0 4px 0">📐 المقاس والموضع</div>
+            <div class="fg"><label class="fl">نمط الملاءمة</label>
+              <select class="fc" id="recvid-fit">
+                <option value="contain" selected>احتواء (يحافظ على النسبة)</option>
+                <option value="cover">تغطية كاملة</option>
+                <option value="stretch">تمديد (يملأ كاملاً)</option>
+                <option value="actual">الحجم الأصليّ</option>
+              </select>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">الموضع الأفقي X</label><div class="sg"><input type="range" min="-50" max="50" step="1" value="0" id="recvid-x"><span class="sv" id="recvid-x-v">0%</span></div></div>
+              <div class="fg"><label class="fl">الموضع العمودي Y</label><div class="sg"><input type="range" min="-50" max="50" step="1" value="0" id="recvid-y"><span class="sv" id="recvid-y-v">0%</span></div></div>
+            </div>
+            <div class="fg"><label class="fl">الحجم النسبيّ</label><div class="sg"><input type="range" min="20" max="200" step="1" value="100" id="recvid-scale"><span class="sv" id="recvid-scale-v">100%</span></div></div>
+
+            <div style="font-size:11px;color:var(--al);font-weight:700;margin:8px 0 4px 0">🎨 إزالة خلفيّة الفيديو</div>
+            <div class="fg"><label class="fl">لون الخلفيّة المراد إزالته</label>
+              <div style="display:flex;gap:5px;align-items:center">
+                <div class="cpg" style="flex:1"><input type="color" id="recvid-bgcolor" value="#000000"></div>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-black" title="أسود">⚫</button>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-white" title="أبيض">⚪</button>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-green" title="أخضر">🟢</button>
+                <button class="btn btn-g bsm" id="recvid-bgcolor-blue" title="أزرق">🔵</button>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="fg"><label class="fl">العتبة (threshold)</label><div class="sg"><input type="range" min="0" max="100" step="1" value="25" id="recvid-threshold"><span class="sv" id="recvid-threshold-v">25</span></div></div>
+              <div class="fg"><label class="fl">نعومة الحواف</label><div class="sg"><input type="range" min="0" max="50" step="1" value="10" id="recvid-softness"><span class="sv" id="recvid-softness-v">10</span></div></div>
+            </div>
+            <span class="note" style="display:block;margin-top:4px;font-size:9px">💡 الأسود والأبيض يستخدمان مقياس السطوع، الألوان الأخرى تستخدم YCbCr. زِد العتبة إذا بقي إطار.</span>
+
+            <button class="btn btn-g bsm" id="recvid-remove" style="margin-top:6px;width:100%">🗑️ إزالة الفيديو</button>
+          </div>
+        </div>
+
+        <div id="quran-sources-wrap">
         <div class="sec">
           <div class="sec-t">📖 السورة والآيات</div>
           <div class="fg" style="display:flex;gap:5px;align-items:center">
@@ -572,56 +625,6 @@ body.offline .offline-badge{display:block}
           <div class="fg" style="margin-top:6px"><label class="fl">🤫 فاصل صمت بين الآيات</label><div class="sg"><input type="range" min="0" max="3" step=".1" value="0" id="aya-gap"><span class="sv" id="aya-gap-v">0s</span></div></div>
           <span class="note" style="display:block;margin-top:2px">صمت إضافي بعد كل آية قبل بدء التالية — مفيد لإيقاع التلاوة الطبيعي</span>
         </div>
-
-        <!-- ═══ v3.2 — فيديو تلاوة جاهز ═══ -->
-        <div class="sec">
-          <div class="sec-t">🎥 فيديو تلاوة جاهز <span class="badge-new">v3.2</span></div>
-          <div class="note">للمقاطع الجاهزة (صوت + نصّ على خلفيّة لونيّة). يستخدم صوت الفيديو كتلاوة ويعرض النصّ مع إزالة الخلفيّة لإظهار الخلفيّة المخصّصة.</div>
-          <div class="tgg" style="background:var(--bg2);border:1px solid var(--p);border-radius:var(--r);padding:6px 8px;margin-top:6px">
-            <span class="tgl">🎬 استخدام فيديو تلاوة جاهز<br><small style="color:var(--t3)">يحلّ محلّ القارئ الافتراضيّ ويستخدم صوت الفيديو</small></span>
-            <label class="tg"><input type="checkbox" id="recvid-on"><span class="tgs"></span></label>
-          </div>
-          <div id="recvid-ctrl" style="display:none;margin-top:6px">
-            <div class="fu-area" style="margin-bottom:6px">
-              <input type="file" accept="video/*" id="recvid-file">
-              <div class="fu-icon">📥</div>
-              <div class="fu-txt">رفع فيديو التلاوة<br><small>MP4 · WebM · MOV</small></div>
-            </div>
-            <div id="recvid-info" style="font-size:10px;color:var(--t3);margin-bottom:6px;min-height:14px"></div>
-
-            <div style="font-size:11px;color:var(--al);font-weight:700;margin:8px 0 4px 0">📐 المقاس والموضع</div>
-            <div class="fg"><label class="fl">نمط الملاءمة</label>
-              <select class="fc" id="recvid-fit">
-                <option value="contain" selected>احتواء (يحافظ على النسبة)</option>
-                <option value="cover">تغطية كاملة</option>
-                <option value="stretch">تمديد (يملأ كاملاً)</option>
-                <option value="actual">الحجم الأصليّ</option>
-              </select>
-            </div>
-            <div class="grid2">
-              <div class="fg"><label class="fl">الموضع الأفقي X</label><div class="sg"><input type="range" min="-50" max="50" step="1" value="0" id="recvid-x"><span class="sv" id="recvid-x-v">0%</span></div></div>
-              <div class="fg"><label class="fl">الموضع العمودي Y</label><div class="sg"><input type="range" min="-50" max="50" step="1" value="0" id="recvid-y"><span class="sv" id="recvid-y-v">0%</span></div></div>
-            </div>
-            <div class="fg"><label class="fl">الحجم النسبيّ</label><div class="sg"><input type="range" min="20" max="200" step="1" value="100" id="recvid-scale"><span class="sv" id="recvid-scale-v">100%</span></div></div>
-
-            <div style="font-size:11px;color:var(--al);font-weight:700;margin:8px 0 4px 0">🎨 إزالة خلفيّة الفيديو</div>
-            <div class="fg"><label class="fl">لون الخلفيّة المراد إزالته</label>
-              <div style="display:flex;gap:5px;align-items:center">
-                <div class="cpg" style="flex:1"><input type="color" id="recvid-bgcolor" value="#000000"></div>
-                <button class="btn btn-g bsm" id="recvid-bgcolor-black" title="أسود">⚫</button>
-                <button class="btn btn-g bsm" id="recvid-bgcolor-white" title="أبيض">⚪</button>
-                <button class="btn btn-g bsm" id="recvid-bgcolor-green" title="أخضر">🟢</button>
-                <button class="btn btn-g bsm" id="recvid-bgcolor-blue" title="أزرق">🔵</button>
-              </div>
-            </div>
-            <div class="grid2">
-              <div class="fg"><label class="fl">العتبة (threshold)</label><div class="sg"><input type="range" min="0" max="100" step="1" value="25" id="recvid-threshold"><span class="sv" id="recvid-threshold-v">25</span></div></div>
-              <div class="fg"><label class="fl">نعومة الحواف</label><div class="sg"><input type="range" min="0" max="50" step="1" value="10" id="recvid-softness"><span class="sv" id="recvid-softness-v">10</span></div></div>
-            </div>
-            <span class="note" style="display:block;margin-top:4px;font-size:9px">💡 الأسود والأبيض يستخدمان مقياس السطوع، الألوان الأخرى تستخدم YCbCr. زِد العتبة إذا بقي إطار.</span>
-
-            <button class="btn btn-g bsm" id="recvid-remove" style="margin-top:6px;width:100%">🗑️ إزالة الفيديو</button>
-          </div>
         </div>
       </div>
 
@@ -1393,7 +1396,7 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">📋 المشروع</div>
-          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.2.0</span></div>
+          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.3.0</span></div>
           <div class="info-row"><span class="info-k">المطور</span><span class="info-v"><a href="https://github.com/SalehGnuTux" target="_blank">@SalehGnuTux</a></span></div>
           <div class="info-row"><span class="info-k">المستودع</span><span class="info-v"><a href="https://github.com/SalehGnuTux/GT-SQRM" target="_blank">GitHub/GT-SQRM</a></span></div>
           <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv3

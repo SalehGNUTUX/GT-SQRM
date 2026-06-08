@@ -319,13 +319,28 @@ function initEventListeners() {
     const inp = $("chromakey-color"); if (inp) { inp.value = "#0047bb"; inp.dispatchEvent(new Event("change")); }
   });
 
-  // v3.2 — فيديو التلاوة
+  // v3.3 — فيديو التلاوة: تفعيل/إلغاء يُلغي مصادر القرآن تلقائياً
   const recvidOn = $("recvid-on");
   if (recvidOn) recvidOn.addEventListener("change", (e) => {
     const ctrl = $("recvid-ctrl");
+    const wrap = $("quran-sources-wrap");
     if (ctrl) ctrl.style.display = e.target.checked ? "block" : "none";
-    if (e.target.checked) toast("🎥 وضع فيديو التلاوة مُفعَّل — ارفع فيديو لتفعيل العرض", "info", 2200);
-    else if (S.recVidEl) { try { S.recVidEl.pause(); } catch (_) {} }
+    if (wrap) wrap.style.display = e.target.checked ? "none" : "block";
+    if (e.target.checked) {
+      if (typeof stopRecitationAudio === "function") { try { stopRecitationAudio(); } catch (_) {} }
+      if (typeof _recGen !== "undefined") { try { _recGen++; } catch (_) {} }
+      if (S.playing) { try { togglePlay(); } catch (_) {} }
+      const hasQuran = S.verses?.some(v => !v.free);
+      if (hasQuran) {
+        S.verses = []; S.translations = []; S.ayaDurations = []; S.currentAya = 0; S.elapsed = 0;
+        if (typeof updateAyaUI === "function") updateAyaUI();
+      }
+      toast("🎥 وضع فيديو التلاوة مُفعَّل — مصادر القرآن مُعطَّلة مؤقّتاً", "info", 2500);
+    } else {
+      if (S.recVidEl) { try { S.recVidEl.pause(); } catch (_) {} }
+      if (typeof onSurahChange === "function") { try { onSurahChange(); } catch (_) {} }
+      toast("📖 وضع فيديو التلاوة مُعطَّل — عودة لمصادر القرآن", "info", 1800);
+    }
   });
   const recvidFile = $("recvid-file");
   if (recvidFile) recvidFile.addEventListener("change", (e) => onRecVidFile(e.target));
@@ -995,6 +1010,7 @@ function onRecVidFile(input) {
   v.onerror = () => toast("❌ فشل تحميل الفيديو", "error", 2500);
   S.recVidEl = v;
   S.recVidFile = file;
+  if (typeof markProjectDirty === "function") markProjectDirty();
   input.value = "";
 }
 function removeRecVid() {
@@ -2539,6 +2555,7 @@ function onBgAudio(input) {
   a.volume = gv("bg-vol") / 100;
   S.bgAudioEl = a;
   S.bgAudioFile = file; // v3.1
+  if (typeof markProjectDirty === "function") markProjectDirty();
   resumeAudioCtx().then(ctx => {
     try {
       const src = ctx.createMediaElementSource(a);
@@ -2578,6 +2595,7 @@ function onBgMedia(input, type) {
     img.onerror = () => toast("❌ فشل تحميل الصورة", "error");
     img.src = url;
     S.bgImgFile = file; // v3.1
+    if (typeof markProjectDirty === "function") markProjectDirty();
     const thumb = $("bg-img-thumb");
     $("bg-img-preview").src = url;
     thumb.style.display = "block";
@@ -2608,6 +2626,7 @@ function addBgVidItem(file) {
       audioBuffer: null,
     };
     S.bgVidItems.push(item);
+    if (typeof markProjectDirty === "function") markProjectDirty();
     // إن لم يكن هناك فيديو نشط، فعّل الأول
     if (!S.bgVid) {
       S.bgVid = vid;
@@ -3270,6 +3289,11 @@ async function startExport(type) {
 
   if (S.bgAudioEl) { S.bgAudioEl.currentTime = 0; S.bgAudioEl.play().catch(() => {}); }
 
+  // v3.3 — V1: شغّل فيديو التلاوة الجاهز من البداية
+  if (ge("recvid-on") && S.recVidEl) {
+    try { S.recVidEl.currentTime = 0; S.recVidEl.play().catch(() => {}); } catch (_) {}
+  }
+
   const savedAya = S.currentAya;
   const savedElapsed = S.elapsed;
   const savedPlaying = S.playing;
@@ -3350,6 +3374,8 @@ function stopExportSources() {
     try { s.gain.disconnect(); } catch (_) {}
   });
   S.exportSources = [];
+  // v3.3 — أوقف فيديو التلاوة
+  if (S.recVidEl) { try { S.recVidEl.pause(); S.recVidEl.currentTime = 0; } catch (_) {} }
 }
 
 function cancelExport() {

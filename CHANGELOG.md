@@ -1,3 +1,13 @@
+## [3.3.6] — 2026-06-07
+
+### إصلاح تداخل الصوت في وضع recvid (نفس v0.7.5 لـGT-SIRM)
+
+1. startPlayer: إذا recvid-on مُفعَّل → pause bgAudioEl بدل play.
+2. V2 export: إذا recvid → decode S.recVidFile كـ AudioBuffer وتمريره كـ bgBuffer
+   بدل bgAudio القديم.
+
+النتيجة: recvid هو مصدر الصوت الوحيد عند تفعيله.
+
 ## [3.3.5] — 2026-06-07
 
 ### إصلاح: removeBlackBackground is not defined

@@ -182,9 +182,10 @@
 ## 📥 التحميل والتنصيب
 
 ### التحميل المباشر
-- **AppImage** (يعمل على كل توزيعات Linux): [GT-SQRM-3.4.0.AppImage](https://github.com/SalehGNUTUX/GT-SQRM/releases)
-- **حزمة Deb** (Debian/Ubuntu/Mint): [GT-SQRM-3.4.0.deb](https://github.com/SalehGNUTUX/GT-SQRM/releases)
-- **حزمة RPM** (Fedora/RHEL/openSUSE): [GT-SQRM-3.4.0.rpm](https://github.com/SalehGNUTUX/GT-SQRM/releases)
+- **AppImage** (يعمل على كل توزيعات Linux): [GT-SQRM-3.4.0.AppImage](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v3.4.0/GT-SQRM-3.4.0.AppImage)
+- **حزمة Deb** (Debian/Ubuntu/Mint): [gt-sqrm_3.4.0_amd64.deb](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v3.4.0/gt-sqrm_3.4.0_amd64.deb)
+- **حزمة RPM** (Fedora/RHEL/openSUSE): [gt-sqrm-3.4.0-2.x86_64.rpm](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v3.4.0/gt-sqrm-3.4.0-2.x86_64.rpm)
+- **صَفحة الإصدار الكامِلة**: <https://github.com/SalehGNUTUX/GT-SQRM/releases/tag/v3.4.0>
 
 ### تثبيت AppImage
 ```bash
@@ -194,17 +195,17 @@ chmod +x GT-SQRM-3.4.0.AppImage
 
 ### تثبيت حزمة Deb (Debian/Ubuntu)
 ```bash
-sudo dpkg -i GT-SQRM-3.4.0.deb
+sudo dpkg -i gt-sqrm_3.4.0_amd64.deb
 sudo apt --fix-broken install  # إذا لزم
 ```
 
 ### تثبيت حزمة RPM (Fedora/RHEL/openSUSE)
 ```bash
-sudo dnf install ./GT-SQRM-3.4.0.rpm         # Fedora / RHEL 9+
+sudo dnf install ./gt-sqrm-3.4.0-2.x86_64.rpm      # Fedora / RHEL 9+
 # أو:
-sudo rpm -i GT-SQRM-3.4.0.rpm
+sudo rpm -i gt-sqrm-3.4.0-2.x86_64.rpm
 # أو على openSUSE:
-sudo zypper install ./GT-SQRM-3.4.0.rpm
+sudo zypper install ./gt-sqrm-3.4.0-2.x86_64.rpm
 ```
 
 ### دمج AppImage في قائمة البرامج

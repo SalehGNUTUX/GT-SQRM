@@ -241,7 +241,18 @@ body.desktop .browser-only{display:none!important}
 #batch-modal .modal{max-width:480px;width:96vw}
 .batch-item{display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:4px}
 /* قائمة مقاطع الخلفية المتعددة */
-.bgv-item{display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:3px;font-size:9.5px}
+.bgv-item{display:flex;align-items:center;gap:5px;padding:4px 6px;background:var(--bg3);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:3px;font-size:9.5px;flex-wrap:wrap;transition:background .2s}
+@keyframes bgv-moved-highlight{0%{background:var(--bg3);box-shadow:none}30%{background:rgba(240,200,66,.22);box-shadow:0 0 12px 2px rgba(240,200,66,.5)}100%{background:var(--bg3);box-shadow:none}}
+.bgv-item.bgv-just-moved{animation:bgv-moved-highlight 1.4s ease-out}
+.bgv-trim-block{flex-basis:100%;display:flex;gap:4px;align-items:center;justify-content:flex-end;padding-top:3px;font-size:9.5px;color:var(--t3);flex-wrap:nowrap;overflow:hidden;min-width:0}
+.bgv-trim-block input[type=number]{width:52px;padding:2px 4px;font-size:9.5px;background:var(--bg4);border:1px solid var(--b1);color:var(--t1);border-radius:3px;flex-shrink:0;text-align:center;-moz-appearance:textfield}
+.bgv-trim-block input[type=number]::-webkit-inner-spin-button,
+.bgv-trim-block input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.bgv-trim-block select{background:var(--bg4);color:var(--t1);border:1px solid var(--b1);border-radius:3px;padding:2px 4px;font-size:9.5px;height:22px;cursor:pointer;font-family:inherit;appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg, transparent 50%, var(--t1) 50%), linear-gradient(135deg, var(--t1) 50%, transparent 50%);background-position:calc(100% - 6px) 50%, calc(100% - 3px) 50%;background-size:4px 4px, 4px 4px;background-repeat:no-repeat;padding-inline-end:14px;min-width:0;flex:1 1 80px;max-width:95px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}
+.bgv-trim-block.on{color:var(--al)}
+.bgv-trim-block button{padding:2px 6px;background:var(--bg4);border:1px solid var(--b1);color:var(--t1);border-radius:3px;cursor:pointer;font-size:11px;height:22px;line-height:1}
+.bgv-trim-block button:hover:not(:disabled){background:var(--p)}
+.bgv-trim-block button:disabled{opacity:.4;cursor:not-allowed}
 .bgv-item .bgv-idx{color:var(--t3);min-width:14px;text-align:center}
 .bgv-item .bgv-name{flex:1;color:var(--t1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr}
 .bgv-item .bgv-dur{color:var(--t3);font-size:8.5px}
@@ -654,9 +665,34 @@ body.offline .offline-badge{display:block}
           </div>
           <div id="bg-vid-ctrl" style="display:none;margin-top:8px">
             <div class="fu-area"><input type="file" accept="video/*" id="bg-vid-input" multiple><div class="fu-icon">🎥</div><div class="fu-txt">فيديو خلفية (يمكن رفع عدة مقاطع)<br><small>تُشغَّل بالتسلسل ثم تعود من البداية</small></div></div>
+            <!-- v1.2 — شَريط أدوات Undo/Redo + استعادة مَحذوف -->
+            <div id="bg-vid-toolbar" style="margin-top:5px;display:flex;gap:6px;align-items:center;justify-content:flex-end;font-size:11px">
+              <button type="button" id="bgv-undo-btn" class="btn-inline" title="تَراجُع (Ctrl+Z)" disabled>↩️ تَراجُع</button>
+              <button type="button" id="bgv-redo-btn" class="btn-inline" title="إعادة (Ctrl+Y)" disabled>↪️ إعادة</button>
+              <button type="button" id="bgv-restore-deleted-btn" class="btn-inline" title="استعادة آخر مَقطع مَحذوف" disabled>♻️ استعادة مَحذوف</button>
+            </div>
             <div id="bg-vid-list" style="margin-top:6px"></div>
             <div class="fg" style="margin-top:5px"><label class="fl">مدة الانتقال السلس بين المقاطع</label>
               <div class="sg"><input type="range" min="0" max="2000" step="50" value="1000" id="bg-crossfade-ms"><span class="sv" id="bg-crossfade-ms-v">1000ms</span></div>
+            </div>
+            <!-- v1.2 — نَمط اِنتقال + نُعومة الحَواف -->
+            <div class="fg" style="margin-top:5px"><label class="fl">نَمط الاِنتقال العامّ</label>
+              <select class="fc" id="bg-transition">
+                <option value="fade">✨ ناعم (fade)</option>
+                <option value="wipeleft">◀️ مَسح يَسار</option>
+                <option value="wiperight">▶️ مَسح يَمين</option>
+                <option value="slideleft">⬅️ اِنزلاق يَسار</option>
+                <option value="slideright">➡️ اِنزلاق يَمين</option>
+                <option value="slideup">⬆️ اِنزلاق أَعلى</option>
+                <option value="slidedown">⬇️ اِنزلاق أَسفل</option>
+                <option value="circleopen">⚪ دائرة تَنفَتِح</option>
+                <option value="circleclose">⚫ دائرة تَنغَلِق</option>
+                <option value="radial">🌀 قَطاعيّ</option>
+                <option value="dissolve">💫 مُذَوَّب</option>
+              </select>
+            </div>
+            <div class="fg" style="margin-top:5px"><label class="fl">نُعومة الحَواف (feather)</label>
+              <div class="sg"><input type="range" min="0" max="100" step="1" value="30" id="bg-transition-softness"><span class="sv" id="bg-transition-softness-v">30%</span></div>
             </div>
             <div id="bg-vid-thumb"><video id="bg-vid-preview" muted loop playsinline></video></div>
             <div id="bg-vid-info" style="font-size:9px;color:var(--t3);margin-top:3px"></div>
@@ -982,12 +1018,21 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">🏷️ العلامة المائية</div>
+          <!-- v1.2 — توگل تفعيل -->
+          <div class="tgg" style="margin-bottom:6px">
+            <span class="tgl">تَفعيل العَلامة المائيّة</span>
+            <label class="tg"><input type="checkbox" id="wm-on" checked><span class="tgs"></span></label>
+          </div>
           <div class="fg"><input type="text" class="fc" id="wm-text" placeholder="@قناتك"></div>
           <div class="grid2">
             <div class="fg"><label class="fl">الموضع</label><select class="fc" id="wm-pos"><option value="br">أسفل اليمين</option><option value="bl">أسفل اليسار</option><option value="tr">أعلى اليمين</option><option value="tl">أعلى اليسار</option></select></div>
             <div class="fg"><label class="fl">الحجم</label><div class="sg"><input type="range" min="8" max="30" value="13" id="wm-size"><span class="sv" id="wm-size-v">13px</span></div></div>
           </div>
           <div class="fg"><label class="fl">اللون</label><div class="cpg"><input type="color" id="wm-col" value="#ffffff"></div></div>
+          <!-- v1.2 — إزاحة رَأسيّة (0-40%) -->
+          <div class="fg"><label class="fl">إزاحة رَأسيّة</label>
+            <div class="sg"><input type="range" min="0" max="40" step="1" value="0" id="wm-y-offset"><span class="sv" id="wm-y-offset-v">0%</span></div>
+          </div>
         </div>
       </div>
 
@@ -1396,7 +1441,7 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">📋 المشروع</div>
-          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.3.6</span></div>
+          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.4.0</span></div>
           <div class="info-row"><span class="info-k">المطور</span><span class="info-v"><a href="https://github.com/SalehGnuTux" target="_blank">@SalehGnuTux</a></span></div>
           <div class="info-row"><span class="info-k">المستودع</span><span class="info-v"><a href="https://github.com/SalehGnuTux/GT-SQRM" target="_blank">GitHub/GT-SQRM</a></span></div>
           <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv3

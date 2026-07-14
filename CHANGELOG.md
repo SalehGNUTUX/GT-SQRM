@@ -1,3 +1,41 @@
+## [3.4.0] — 2026-07-14
+
+### مقاطع خَلفيّة مُتَقَدّمة + Undo/Redo + عَلامة مائيّة مُطَوَّرة (منقولة من GT-SIRM v1.2)
+
+#### مقاطع الخَلفيّة (playlist) — 12 تَحسيناً وإصلاحاً
+- **👁️ إعماء (hidden) لِكُلّ مَقطع** — يَبقى في القائمة، يُتَخَطّى في التَبديل والـcrossfade والتَصدير. زَرّ 👁️/👁️‍🗨️ في كُلّ صَفّ. `getNextVisibleBgVidIdx`, `getFirstVisibleBgVidIdx`, `toggleBgVidHidden`.
+- **✂️ تَقليم لِكُلّ مَقطع (per-clip trim)** — حَقلا "من/إلى" بجَنب كُلّ مَقطع + زَرّ ↺ إفراغ. يَعمَل في المُعاينَة والتَصدير (ffmpeg xfade+trim). `getBgClipTrimStart/End`, `hasBgClipTrim`, `setBgVidClipTrim`, `resetBgVidClipTrim`.
+- **🎨 11 نَمط اِنتقال** — بَديل عن fade فَقط: `wipeleft/right/slideleft/right/up/down/circleopen/close/radial/dissolve`. اِنتقالات بـcanvas مَع softness (نُعومة حَواف gradient). عامّ عَبر `#bg-transition` أَو per-clip من dropdown في كُلّ صَفّ. `drawBgTransition`, `_makeClipPath`, `_getSoftMaskCanvas`, `BG_TRANSITION_TYPES`.
+- **↩️ Undo/Redo عامّ** — 30 إجراءً مَحفوظاً، أزرار في `#bg-vid-toolbar`، اختصارات Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z (تَجاهُل داخِل حُقول الإدخال). `S._history`, `historyPush`, `historyUndo`, `historyRedo`.
+- **♻️ استعادة آخر مَقطع مَحذوف** — يَبحَث في history عن آخر `bgVidDelete`. `restoreLastDeletedBgVid`.
+- **🌟 وميض ذَهبيّ عِند النَقل** — `.bgv-just-moved` animation + scroll إلى الصَفّ. `highlightMovedBgVidItem`.
+- **🖱️ نَقر عَلى صَفّ يُنَشِّط المُعاينَة** — بَدون الحاجة لأَزرار.
+- **🐛 Bug#4** — `switchToNextBgVid` يُوقِف المَقطع القَديم (بَعد التَحَقُّق مِن `hadCrossfade`) ويُعيد `currentTime = trimStart` عِند الحاجة. قَبل: كان القَديم يَستَمِرّ يَعمَل في الخَلفيّة.
+- **✨ إصلاح الوَميض** — `updateBgVidCrossfade` تَنتَقِل فَوراً عِند `remaining <= 0` بَدَل اِنتظار `ended` مِن المُتَصَفِّح.
+- **🔊 صَوت مُستَمِرّ** — `mixAudioToBuffer` تُبقي جميع المَقاطع المَرئيّة في timeline (buffer=null لِلصامِتة) بَدَل تَصفيتها. يُصلِح: صَوت مَقطع واحد كان يَستَمِرّ عَلى طول الفيديو المُصَدَّر.
+- **📥 استعادة تَتابُعيّة** — `addBgVidItem` يُعيد Promise + خيار `silent`. الاستعادة تَستَخدِم `await` لِتَضمين الإعدادات (`hidden/trimStart/trimEnd/transition/audioEnabled/audioGain`) مُباشَرَةً + فَكّ صَوت المَقطع لَو مُفَعَّلاً.
+- **🎬 WebM Infinity fix** — `getBgClipTrimEnd` يَستَخدِم `vid.duration` الحَيّة لَو كانت `item.dur=0` (WebM بمُدّة `Infinity`). `hasBgClipTrim` تَعمَل مَع WebM.
+- **🟢 حاشية خَضراء** — `activateBgVidByIndex` يُنَبِّه `renderBgVidList` في النِهاية لِتَحديث المؤشِّر البَصريّ.
+
+#### ffmpeg IPC (main.js)
+- `extract-bg-frames` يَقبَل `clipTrims`, `transition`, `clipTransitions`.
+- `xfadeAt(i-1)` — تَأثير الاِنتقال من المَقطع (i-1) إلى (i) يَستَخدِم إعداد المَقطع (i-1) إن حُدّد، وإلا العامّ.
+- `XFADE_SAFE` — قائمة أَسماء xfade المَعروفة (يَحمي من قيمة مَجهولة تُفشِل ffmpeg).
+- `filter_complex` يَستَخدِم `trim=start:end,setpts=PTS-STARTPTS` قَبل `scale/crop` لِكُلّ مَقطع.
+
+#### العَلامة المائيّة
+- `#wm-on` — توگل تَفعيل (اِفتراضيّاً مُفَعَّل، حِفاظاً عَلى السُلوك السابِق).
+- `#wm-y-offset` — إزاحة رَأسيّة 0-40% (يَنطَبِق عَلى المَواضِع الأَربعة).
+
+#### إصلاحات المُشَغِّل
+- `playRecitationAudio` — يَبدأ من `S.elapsed` (يَدعَم استئناف مِن مَنتَصَف الآية).
+- `pausePlayer` — يُوقِف `S.bgVidNext` أَيضاً (كان يَستَمِرّ يَعمَل في الخَلفيّة).
+- `startPlayer` — يُشَغِّل `S.bgVidNext` أَيضاً لَو كان في مَنتَصَف الـcrossfade.
+- `restartAll` — يُعيد `S.bgVid = bgVidItems[0].vid` + `bgVidNext = null` + `bgVidFadeProgress = 0` + إعادة تَعيين preview src.
+
+#### إزالة سَلوك مُعطَّل
+- `applyBgVidTrim` — أُزيل مُراقِب `timeupdate` البُغَيان (كان يَقفِل المَقطع في وَضع playlist بَدَل الاِنتقال). الآن `updateBgVidCrossfade` تُدير الحُدود.
+
 ## [3.3.6] — 2026-06-07
 
 ### إصلاح تداخل الصوت في وضع recvid (نفس v0.7.5 لـGT-SIRM)

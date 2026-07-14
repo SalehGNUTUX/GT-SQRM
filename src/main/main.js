@@ -442,7 +442,15 @@ ipcMain.on("ffmpeg-pipe-cancel", () => {
 // ── استخراج إطارات فيديو الخلفية مسبقاً (مرة واحدة) ───
 //    أسرع وأكثر استقراراً من seek على HTMLVideoElement
 ipcMain.handle("extract-bg-frames", async (event, opts) => {
-  const { videoBytes, videoBytesList, clipDurations, crossfadeSec, fps, width, height, totalDuration, trimStart, trimEnd } = opts;
+  const { videoBytes, videoBytesList, clipDurations, clipTrims, transition, clipTransitions, crossfadeSec, fps, width, height, totalDuration, trimStart, trimEnd } = opts;
+  // v1.2 — قائمة أَسماء xfade المَعروفة (يَحمي من قيمة مَجهولة تُفشِل ffmpeg)
+  const XFADE_SAFE = new Set(["fade","wipeleft","wiperight","wipeup","wipedown","slideleft","slideright","slideup","slidedown","circleopen","circleclose","radial","dissolve","rectcrop","distance","pixelize","fadegrays","hlslice","hrslice","vuslice","vdslice"]);
+  const xfadeName = (transition && XFADE_SAFE.has(transition)) ? transition : "fade";
+  const xfadeAt = (i) => {
+    // v1.2 — تَأثير المَقطع i إن حُدّد، وإلا العامّ
+    const perClip = Array.isArray(clipTransitions) ? clipTransitions[i] : null;
+    return (perClip && XFADE_SAFE.has(perClip)) ? perClip : xfadeName;
+  };
   const ffmpegPath = await getBinPath("ffmpeg");
   if (!ffmpegPath) throw new Error("ffmpeg not found");
 
@@ -468,9 +476,15 @@ ipcMain.handle("extract-bg-frames", async (event, opts) => {
     const concatPath = path.join(os.tmpdir(), `gt-sqrm-bg-concat-${Date.now()}.mp4`);
     inputsToClean.push(concatPath);
     const W12 = Math.round(width * 1.2), H12 = Math.round(height * 1.2);
-    const filterInputs = tempFiles.map((_, i) =>
-      `[${i}:v:0]scale=${W12}:${H12}:force_original_aspect_ratio=increase,crop=${W12}:${H12},setsar=1,fps=${fps},format=yuv420p[v${i}]`
-    ).join(";");
+    // v1.2 Feature#2 — trim per-clip قبل scale/crop (setpts=PTS-STARTPTS بَعد trim)
+    const hasTrims = Array.isArray(clipTrims) && clipTrims.length === tempFiles.length;
+    const filterInputs = tempFiles.map((_, i) => {
+      const tr = hasTrims ? clipTrims[i] : null;
+      const trimSeg = (tr && (tr.start > 0.001 || tr.end > 0))
+        ? `trim=start=${(tr.start || 0).toFixed(3)}:end=${(tr.end || 0).toFixed(3)},setpts=PTS-STARTPTS,`
+        : "";
+      return `[${i}:v:0]${trimSeg}scale=${W12}:${H12}:force_original_aspect_ratio=increase,crop=${W12}:${H12},setsar=1,fps=${fps},format=yuv420p[v${i}]`;
+    }).join(";");
 
     // ── crossfade أو concat صلب ────────────────────────
     const xf = (typeof crossfadeSec === "number" && crossfadeSec > 0
@@ -485,7 +499,8 @@ ipcMain.handle("extract-bg-frames", async (event, opts) => {
       for (let i = 1; i < tempFiles.length; i++) {
         cum += Math.max(0.1, clipDurations[i - 1] - xf);
         const out = (i === tempFiles.length - 1) ? "outv" : `x${i}`;
-        segs.push(`[${prev}][v${i}]xfade=transition=fade:duration=${xf}:offset=${cum.toFixed(3)}[${out}]`);
+        // v1.2 — تَأثير الاِنتقال من المَقطع (i-1) إلى (i): يَستَخدِم تَأثير المَقطع (i-1)
+        segs.push(`[${prev}][v${i}]xfade=transition=${xfadeAt(i-1)}:duration=${xf}:offset=${cum.toFixed(3)}[${out}]`);
         prev = out;
       }
       chain = `${filterInputs};${segs.join(";")}`;

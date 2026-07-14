@@ -166,7 +166,10 @@ async function mixAudioToBuffer({
     }
   }
 
-  // 3) أصوات خلفيات الفيديو (per-clip) — تحترم crossfade overlap
+  // 3) أصوات خلفيات الفيديو (per-clip) — تحترم crossfade overlap + trim
+  // v1.2 fix — كُلّ العَناصر تُبقي مَواضِعها في timeline (starts + cycleDur)
+  //   لكنّ buffer=null فتَتَخَطّاها الحَلقة. يُصلِح: صَوت مَقطع واحد يَستَمِرّ
+  //   عَلى طول الفيديو المُصَدَّر بدَل التَوقُّف في نافذة المَقطع.
   if (Array.isArray(bgVidAudioItems) && bgVidAudioItems.length) {
     const xf = Math.max(0, bgVidCrossfadeSec || 0);
     const starts = [];
@@ -180,7 +183,7 @@ async function mixAudioToBuffer({
     while (cycleStart < totalDuration && safety++ < 100) {
       for (let i = 0; i < bgVidAudioItems.length; i++) {
         const it = bgVidAudioItems[i];
-        if (!it.buffer) continue;
+        if (!it.buffer) continue;   // v1.2 — تَخَطّى المَقاطع بلا صَوت لكنّ مَواضِعها مَحفوظة
         const startTime = cycleStart + starts[i];
         if (startTime >= totalDuration) break;
         const src = oac.createBufferSource();
@@ -188,9 +191,12 @@ async function mixAudioToBuffer({
         const gain = oac.createGain();
         gain.gain.value = it.gain ?? 0.5;
         src.connect(gain); gain.connect(oac.destination);
+        // v1.2 — trimStart offset في القراءة من الـbuffer
+        const bufOffset = it.trimStart || 0;
+        const bufDur = Math.min(it.buffer.duration - bufOffset, it.dur || it.buffer.duration);
         const remaining = totalDuration - startTime;
-        if (remaining < it.buffer.duration) src.start(startTime, 0, remaining);
-        else                                src.start(startTime);
+        const playDur = Math.max(0, Math.min(bufDur, remaining));
+        if (playDur > 0) src.start(startTime, bufOffset, playDur);
       }
       if (cycleDur <= 0.1) break;
       cycleStart += cycleDur;
@@ -339,6 +345,9 @@ async function startDesktopExportV2(opts) {
     bgVideoBytes,        // ArrayBuffer واحد للفيديو
     bgVideoBytesList,    // Array<ArrayBuffer> لـ playlist (يضمّ في ffmpeg)
     bgClipDurations,     // مدد المقاطع (للـ xfade)
+    bgClipTrims,         // v1.2 — [{start,end}] per-clip trim
+    bgClipTransitions,   // v1.2 — [""|"fade"|...] per-clip transition
+    bgTransition,        // v1.2 — نَمط الاِنتقال العامّ (default "fade")
     bgCrossfadeSec,      // مدة الـ crossfade بالثواني
     bgVidTrim,           // {start,end} لتقطيع فيديو الخلفية (اختياري)
     bgAudioTrim,         // {start,end} لتقطيع صوت الخلفية (اختياري)
@@ -365,11 +374,20 @@ async function startDesktopExportV2(opts) {
     bgBufferTrimmed = sliceAudioBuffer(bgBuffer, bgAudioTrim.start, bgAudioTrim.end);
   }
   onProgress(2, "🎵 جاري خلط المسار الصوتي…");
-  // اجمع صوت خلفيات الفيديو المُفعّل صوتها
+  // v1.2 — كُلّ المَقاطع المَرئيّة (visible) تُبقي مَواضِعها في timeline
+  //   المُفَعَّل صَوتها فَقط لَه buffer، والباقي buffer=null → تَتَخَطّاه الحَلقة
+  //   يُصلِح: صَوت مَقطع واحد يَستَمِرّ عَلى طول الفيديو المُصَدَّر
+  const _getEff = typeof getBgClipEffectiveDur === "function" ? getBgClipEffectiveDur : (it => it.dur || 0);
+  const _getTs  = typeof getBgClipTrimStart    === "function" ? getBgClipTrimStart    : (_  => 0);
   const bgVidAudioItems = (typeof S !== "undefined" && Array.isArray(S.bgVidItems))
     ? S.bgVidItems
-        .filter(it => it.audioEnabled && it.audioBuffer)
-        .map(it => ({ buffer: it.audioBuffer, gain: it.audioGain, dur: it.dur }))
+        .filter(it => !it.hidden)
+        .map(it => ({
+          buffer: (it.audioEnabled && it.audioBuffer) ? it.audioBuffer : null,
+          gain: it.audioGain,
+          dur: _getEff(it),
+          trimStart: _getTs(it),
+        }))
     : [];
   const mixed = await mixAudioToBuffer({
     audioBuffers, ayaStarts,
@@ -407,6 +425,9 @@ async function startDesktopExportV2(opts) {
           videoBytes: vidBytes,
           videoBytesList: hasMulti ? bgVideoBytesList : null,
           clipDurations:  hasMulti ? bgClipDurations : null,
+          clipTrims:      hasMulti ? bgClipTrims : null,           // v1.2
+          transition:     bgTransition || "fade",                    // v1.2
+          clipTransitions: hasMulti ? bgClipTransitions : null,      // v1.2
           crossfadeSec:   hasMulti ? bgCrossfadeSec  : 0,
           fps: FPS,
           width:  W,

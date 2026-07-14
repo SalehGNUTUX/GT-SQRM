@@ -10,7 +10,7 @@
 [![Platform: Linux](https://img.shields.io/badge/Platform-GNU%2FLinux-orange?logo=linux)](https://github.com/SalehGNUTUX/GT-SQRM)
 [![Electron](https://img.shields.io/badge/Built%20with-Electron-47848F?logo=electron)](https://www.electronjs.org/)
 [![ffmpeg](https://img.shields.io/badge/Export-ffmpeg%20V2-green?logo=ffmpeg)](https://ffmpeg.org/)
-[![Version](https://img.shields.io/badge/Version-3.0.0-brightgreen)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-3.4.0-brightgreen)](./CHANGELOG.md)
 
 </div>
 
@@ -18,9 +18,38 @@
 
 ## 📖 نبذة عن البرنامج
 
-**GT-SQRM** هو تطوير سطح المكتب لـ **GT-SQR** (نسخة المتصفح PWA). الإصدار 3.0.0 يضيف اسم السورة في الأعلى، 10 أنماط ظهور للآيات، 9 أنماط ألوان، 9 أشكال دبدبات صوتية، قوالب منصات قابلة للحفظ، تحزيم Linux ثلاثي (AppImage/DEB/RPM)، ومزامنة كاملة بين النسختين.
+**GT-SQRM** هو تطوير سطح المكتب لـ **GT-SQR** (نسخة المتصفح PWA). الإصدار **3.4.0** ينقل من GT-SIRM v1.2 نِظام Undo/Redo عامّ، إعماء (hidden) لكُلّ مَقطع خَلفيّة، تَقليم لكُلّ مَقطع (per-clip trim)، 11 نَمط اِنتقال بَديل عن fade فَقط، عَلامة مائيّة مُطَوَّرة بتوگل تَفعيل + إزاحة رَأسيّة، وإصلاحات جَوهريّة في تَشغيل مَقاطع الخَلفيّة (الوَميض/الصَوت المُستَمِرّ/استعادة المَحذوف). الإصدار 3.0.0 كان قَد أضاف اسم السورة في الأعلى، 10 أنماط ظهور للآيات، 9 أنماط ألوان، 9 أشكال ذَبذبات صوتية، قوالب منصات قابلة للحفظ، تحزيم Linux ثلاثي (AppImage/DEB/RPM)، ومزامنة كاملة بين النسختين.
 
 > 🌐 **النسخة الويب التجريبية متاحة على:** [salehgnutux.github.io/GT-SQR](https://salehgnutux.github.io/GT-SQR/)
+
+---
+
+## 🆕 الجَديد في v3.4.0 (منقول من GT-SIRM v1.2)
+
+### 🎬 مقاطع الخَلفيّة (playlist) — 12 تَحسيناً وإصلاحاً
+- **👁️ إعماء (hidden) لِكُلّ مَقطع** — يَبقى في القائمة، يُتَخَطّى في التَبديل والـcrossfade والتَصدير. زَرّ 👁️/👁️‍🗨️ في كُلّ صَفّ.
+- **✂️ تَقليم لِكُلّ مَقطع (per-clip trim)** — حَقلا "من/إلى" بجَنب كُلّ مَقطع + زَرّ ↺ إفراغ. يَعمَل في المُعاينَة والتَصدير (ffmpeg xfade+trim).
+- **🎨 11 نَمط اِنتقال** — بَديل عن fade فَقط: `wipeleft/right/slideleft/right/up/down/circleopen/close/radial/dissolve`. عامّ + per-clip من dropdown في كُلّ صَفّ. نُعومة حَواف قابِلة للضَبط (0-100%).
+- **↩️ Undo/Redo عامّ** — 30 إجراءً مَحفوظاً، أزرار في شَريط الأدوات، اختصارات `Ctrl+Z` / `Ctrl+Y` / `Ctrl+Shift+Z`.
+- **♻️ استعادة آخر مَقطع مَحذوف** — بضَغطة زَرّ.
+- **🌟 وميض ذَهبيّ عِند النَقل** — تَمييز بَصريّ + scroll إلى الصَفّ.
+- **🖱️ نَقر عَلى صَفّ يُنَشِّط المُعاينَة** — بَدون الحاجة لأَزرار.
+- **🐛 Bug#4** — المَقطع القَديم يُوقَف بَعد التَبديل (كان يَستَمِرّ يَعمَل في الخَلفيّة).
+- **✨ إصلاح الوَميض** — الاِنتقال فَوريّ عِند نِهاية المَقطع بَدَل اِنتظار `ended`.
+- **🔊 صَوت مُستَمِرّ** — كُلّ المَقاطع المَرئيّة تُبقي مَواضِعها في timeline (يُصلِح: صَوت مَقطع واحد كان يَتَوَقَّف قَبل نِهاية الفيديو المُصَدَّر).
+- **📥 استعادة تَتابُعيّة** — عَند فَتح مَشروع، تُطَبَّق الإعدادات مُباشَرَةً على كُلّ مَقطع بَعد `await`.
+- **🎬 WebM Infinity fix** — تَقليم يَعمَل مَع WebM بمُدّة `Infinity`.
+
+### 🏷️ العَلامة المائيّة
+- **توگل تَفعيل** `#wm-on` (اِفتراضيّاً مُفَعَّل حِفاظاً عَلى السُلوك السابِق).
+- **إزاحة رَأسيّة** 0-40% مَع مُراعاة المَواضِع الأَربعة.
+
+### ⏯️ إصلاحات المُشَغِّل
+- التِلاوة تَبدأ من مَوضِع `S.elapsed` (يَدعَم استئناف من مَنتَصَف الآية).
+- `pausePlayer` / `startPlayer` يَشمَلان الآن `S.bgVidNext` أَيضاً.
+- `restartAll` يُعيد ضَبط `S.bgVid` + `bgVidNext` + `bgVidFadeProgress` + preview.
+
+راجع [`CHANGELOG.md`](./CHANGELOG.md) لِلتَفاصيل الكامِلة.
 
 ---
 
@@ -153,29 +182,29 @@
 ## 📥 التحميل والتنصيب
 
 ### التحميل المباشر
-- **AppImage** (يعمل على كل توزيعات Linux): [GT-SQRM-3.0.0.AppImage](https://github.com/SalehGNUTUX/GT-SQRM/releases)
-- **حزمة Deb** (Debian/Ubuntu/Mint): [GT-SQRM-3.0.0.deb](https://github.com/SalehGNUTUX/GT-SQRM/releases)
-- **حزمة RPM** (Fedora/RHEL/openSUSE): [GT-SQRM-3.0.0.rpm](https://github.com/SalehGNUTUX/GT-SQRM/releases)
+- **AppImage** (يعمل على كل توزيعات Linux): [GT-SQRM-3.4.0.AppImage](https://github.com/SalehGNUTUX/GT-SQRM/releases)
+- **حزمة Deb** (Debian/Ubuntu/Mint): [GT-SQRM-3.4.0.deb](https://github.com/SalehGNUTUX/GT-SQRM/releases)
+- **حزمة RPM** (Fedora/RHEL/openSUSE): [GT-SQRM-3.4.0.rpm](https://github.com/SalehGNUTUX/GT-SQRM/releases)
 
 ### تثبيت AppImage
 ```bash
-chmod +x GT-SQRM-3.0.0.AppImage
-./GT-SQRM-3.0.0.AppImage
+chmod +x GT-SQRM-3.4.0.AppImage
+./GT-SQRM-3.4.0.AppImage
 ```
 
 ### تثبيت حزمة Deb (Debian/Ubuntu)
 ```bash
-sudo dpkg -i GT-SQRM-3.0.0.deb
+sudo dpkg -i GT-SQRM-3.4.0.deb
 sudo apt --fix-broken install  # إذا لزم
 ```
 
 ### تثبيت حزمة RPM (Fedora/RHEL/openSUSE)
 ```bash
-sudo dnf install ./GT-SQRM-3.0.0.rpm         # Fedora / RHEL 9+
+sudo dnf install ./GT-SQRM-3.4.0.rpm         # Fedora / RHEL 9+
 # أو:
-sudo rpm -i GT-SQRM-3.0.0.rpm
+sudo rpm -i GT-SQRM-3.4.0.rpm
 # أو على openSUSE:
-sudo zypper install ./GT-SQRM-3.0.0.rpm
+sudo zypper install ./GT-SQRM-3.4.0.rpm
 ```
 
 ### دمج AppImage في قائمة البرامج

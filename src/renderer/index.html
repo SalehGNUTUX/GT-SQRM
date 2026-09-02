@@ -568,6 +568,10 @@ body.offline .offline-badge{display:block}
             <div class="fg"><label class="fl">إلى الآية</label><input type="number" class="fc" id="to-aya" min="1" value="7"></div>
           </div>
           <div id="aya-info" style="font-size:9px;color:var(--t3);margin-bottom:5px"></div>
+          <div class="tgg" style="background:var(--bg2);border:1px solid var(--p);border-radius:var(--r);padding:5px 7px;margin-bottom:5px">
+            <span class="tgl">🕋 البَسمَلة شَريحةً مُستَقِلّة<br><small style="color:var(--t3)">تُكتَبُ <b>وتُتلى</b> بِصَوتِ القارئ قَبلَ الآيةِ الأُولى. عِندَ الإطفاء تُحذَفُ مِنَ النَصّ فلا تُكتَبُ ولا تُتلى. (لا تَظهَرُ في الفاتِحةِ لأنّها آيةٌ فيها، ولا في بَراءة)</small></span>
+            <label class="tg"><input type="checkbox" id="basmala-on" checked><span class="tgs"></span></label>
+          </div>
           <button class="btn btn-p bsm bfw" id="load-verses-btn">🔄 تحميل الآيات</button>
         </div>
 
@@ -1320,12 +1324,14 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">🎬 جودة التصدير</div>
-          <div class="fg"><label class="fl">دقة الفيديو</label>
+          <div class="fg"><label class="fl">سَقفُ الدِقّة <small style="color:var(--t3)">(يُصَغِّرُ ولا يُكَبِّر — أَقَلُّ دِقّةً = تَصديرٌ أَسرَع)</small></label>
             <select class="fc" id="export-res">
-              <option value="720">720p (HD)</option>
-              <option value="1080" selected>1080p (Full HD)</option>
-              <option value="1920">1920×1080 (مخصص)</option>
+              <option value="0" selected>كَما يَضبِطُهُ القالِب (بِلا سَقف)</option>
+              <option value="1920">حَدٌّ أَقصى 1080p</option>
+              <option value="1280">حَدٌّ أَقصى 720p — أَسرَع</option>
+              <option value="854">حَدٌّ أَقصى 480p — الأَسرَعُ لِلأَجهِزةِ الضَعيفة</option>
             </select>
+            <div id="export-res-info" style="font-size:9px;color:var(--t3);margin-top:3px"></div>
           </div>
           <div class="fg"><label class="fl">معدل الإطارات (FPS)</label>
             <select class="fc" id="export-fps">
@@ -1335,7 +1341,16 @@ body.offline .offline-badge{display:block}
             </select>
           </div>
           <div class="fg"><label class="fl">جودة الصورة (Mbps)</label>
-            <div class="sg"><input type="range" min="2" max="20" value="8" id="export-vbr"><span class="sv" id="export-vbr-v">8 Mbps</span></div>
+            <div class="sg"><input type="range" min="2" max="20" step="0.5" value="8" id="export-vbr"><span class="sv" id="export-vbr-v">8 Mbps</span></div>
+            <!-- v3.5 — المِزلاقُ وَحدَهُ رَقمٌ مُجَرَّد. هذه الأَزرارُ تَختارُ
+                 مُعَدَّلاً مُناسِباً **لِدِقّةِ التَصديرِ الفِعليّة**، والسَطرُ تَحتَها
+                 يَعرِضُ الحَجمَ المُتَوَقَّعَ قَبلَ التَصديرِ لا بَعدَه. -->
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:5px">
+              <button type="button" class="btn btn-g bsm" id="vbr-preset-small"  style="flex:1;font-size:9px;padding:4px 6px">🪶 صَغير</button>
+              <button type="button" class="btn btn-g bsm" id="vbr-preset-balanced" style="flex:1;font-size:9px;padding:4px 6px">⚖️ مُتَوازِن</button>
+              <button type="button" class="btn btn-g bsm" id="vbr-preset-high"   style="flex:1;font-size:9px;padding:4px 6px">💎 عالٍ</button>
+            </div>
+            <div id="export-size-note" style="font-size:9px;color:var(--t3);margin-top:4px;line-height:1.6"></div>
           </div>
         </div>
         <div class="sec">
@@ -1441,7 +1456,7 @@ body.offline .offline-badge{display:block}
         </div>
         <div class="sec">
           <div class="sec-t">📋 المشروع</div>
-          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.4.0</span></div>
+          <div class="info-row"><span class="info-k">الإصدار</span><span class="info-v">3.5.0</span></div>
           <div class="info-row"><span class="info-k">المطور</span><span class="info-v"><a href="https://github.com/SalehGnuTux" target="_blank">@SalehGnuTux</a></span></div>
           <div class="info-row"><span class="info-k">المستودع</span><span class="info-v"><a href="https://github.com/SalehGnuTux/GT-SQRM" target="_blank">GitHub/GT-SQRM</a></span></div>
           <div class="info-row"><span class="info-k">الرخصة</span><span class="info-v">GPLv3
@@ -1541,7 +1556,7 @@ body.offline .offline-badge{display:block}
   </div>
 </div>
 
-<!-- v3.1 — نافذة تأكيد الإغلاق -->
+<!-- v3.5 — نافذة تأكيد الإغلاق -->
 <div id="close-confirm-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.78);align-items:center;justify-content:center">
   <div style="background:var(--bg0);border:1px solid var(--b1);border-radius:var(--r);padding:18px;max-width:420px;width:92%;direction:rtl;text-align:center">
     <div style="font-size:36px;margin-bottom:8px">⚠️</div>
@@ -1555,7 +1570,7 @@ body.offline .offline-badge{display:block}
   </div>
 </div>
 
-<!-- v3.1 — نافذة المصادر المفقودة عند الاستيراد -->
+<!-- v3.5 — نافذة المصادر المفقودة عند الاستيراد -->
 <div id="missing-assets-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.75);align-items:center;justify-content:center">
   <div style="background:var(--bg0);border:1px solid var(--b1);border-radius:var(--r);padding:16px;max-width:560px;width:92%;max-height:80vh;overflow-y:auto;direction:rtl">
     <h3 style="margin:0 0 10px 0;color:var(--al);font-size:15px">⚠️ مصادر مفقودة في المشروع</h3>

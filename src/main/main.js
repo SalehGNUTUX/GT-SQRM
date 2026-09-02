@@ -148,7 +148,7 @@ function createWindow() {
     }
   });
 
-  // v3.1 — حماية الإغلاق مع modal مخصّص
+  // v3.5 — حماية الإغلاق مع modal مخصّص
   mainWindow.on("close", (e) => {
     if (mainWindow._allowClose) return;
     e.preventDefault();
@@ -164,7 +164,7 @@ ipcMain.handle("confirm-close", () => {
   if (mainWindow) { mainWindow._allowClose = true; mainWindow.close(); }
 });
 
-// v3.1 — فتح ملفّ .gtsqrm من سطر الأوامر أو File Association
+// v3.5 — فتح ملفّ .gtsqrm من سطر الأوامر أو File Association
 let _pendingProjectFile = null;
 function extractProjectFileArg(argv) {
   for (const a of argv.slice(1)) {
@@ -215,7 +215,7 @@ app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 
-// v3.1 — IPC handlers للمشاريع
+// v3.5 — IPC handlers للمشاريع
 ipcMain.handle("project-save-dialog", async (_e, defaultName) => {
   const result = await dialog.showSaveDialog(mainWindow, {
     title: "حفظ المشروع",
@@ -527,6 +527,56 @@ ipcMain.handle("extract-bg-frames", async (event, opts) => {
       proc.on("error", reject);
     });
     inputPath = concatPath;
+
+    // ── v1.3.0 — لُحمةُ الحَلقة (عَطَب #3) ─────────────────────
+    //  الاِنتِقالُ بَينَ المَقاطِعِ كانَ مَمزوجاً بِـxfade، أمّا **العَودةُ مِن آخِرِ
+    //  مَقطَعٍ إلى أَوَّلِه** — وهي تَقَعُ كُلَّما طالَتِ التِلاوةُ عَن مَجموعِ
+    //  المَقاطِع — فَكانَت قَطعاً حادّاً؛ لأنَّ `-stream_loop -1` يُعيدُ المَلَفَّ
+    //  مِن بِدايَتِهِ بِلا مَزج.
+    //
+    //  الحَلُّ الوَصفةُ المَعروفةُ لِلحَلقةِ المَلحومة: نُنتِجُ نُسخةً مُدَّتُها
+    //  (الدَورة − xf) مُحتَواها C[xf..D] وذَيلُها مَمزوجٌ بِرَأسِ C[0..xf]. فَإذا
+    //  لَفَّها ffmpeg التَقى آخِرُها بِأَوَّلِها في نَفسِ اللَحظةِ البَصَريّةِ
+    //  فَاستَحالَ القَطعُ مَزجاً — وهذا يَصِحُّ لِكُلِّ لَفّةٍ لا لِلأولى فَقَط.
+    //
+    //  الثَمَنُ الوَحيد: أَوَّلُ xf ثانِيةٍ مِنَ المَقطَعِ الأَوَّلِ لا تُرى إلّا
+    //  مَمزوجةً عِندَ اللُحمة. وهذا مُطابِقٌ حَرفيّاً لِما تَفعَلُهُ نُسخةُ الويبِ
+    //  في `getBgClipAtTimeWeb` فَيَخرُجُ التَصديرانِ سَواءً.
+    const cycleDur = clipDurations.reduce((a, b) => a + (parseFloat(b) || 0), 0)
+                     - (tempFiles.length - 1) * xf;
+    const willLoop = (typeof totalDuration === "number") && totalDuration > cycleDur + 0.05;
+    if (xf > 0 && willLoop && cycleDur > 2.5 * xf) {
+      const loopPath = path.join(os.tmpdir(), `gt-sqrm-bg-loop-${Date.now()}.mp4`);
+      const off = (cycleDur - 2 * xf).toFixed(3);
+      // ⚠️ `xfade` يَرفُضُ ناتِجَ `trim` بِلا إعادةِ ضَبطِ المُعَدَّل: يَقرَأُ
+      //   المُعَدَّلَ 1/0 فَيُخفِقُ بِـ«The inputs needs to be a constant frame
+      //   rate». فَـ`fps` و`format` و`setsar` بَعدَ كُلِّ قَصٍّ لَيسَت زينة.
+      const seamNorm = `fps=${fps},format=yuv420p,setsar=1`;
+      const seamChain =
+        `[0:v]split=2[jt][bt];` +
+        `[jt]trim=start=${xf.toFixed(3)},setpts=PTS-STARTPTS,${seamNorm}[j];` +
+        `[bt]trim=start=0:end=${xf.toFixed(3)},setpts=PTS-STARTPTS,${seamNorm}[b];` +
+        `[j][b]xfade=transition=${xfadeAt(tempFiles.length - 1)}:duration=${xf}:offset=${off}[outv]`;
+      const loopArgs = ["-y", "-loglevel", "error", "-i", concatPath,
+        "-filter_complex", seamChain, "-map", "[outv]",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "23",
+        "-pix_fmt", "yuv420p", loopPath];
+      try {
+        await new Promise((resolve, reject) => {
+          const lp = spawn(ffmpegPath, loopArgs);
+          let lerr = "";
+          lp.stderr.on("data", d => { lerr += d.toString(); });
+          lp.on("close", c => c === 0 ? resolve() : reject(new Error(`seam loop failed (${c}): ${lerr.slice(-300)}`)));
+          lp.on("error", reject);
+        });
+        inputsToClean.push(loopPath);
+        inputPath = loopPath;
+      } catch (e) {
+        // غَيرُ قاتِل: نَعودُ لِلقَطعِ الحادِّ بَدَلَ إفشالِ التَصديرِ كُلِّه
+        console.warn("[bg] تَعَذَّرَت لُحمةُ الحَلقة:", e.message);
+        try { fs.unlinkSync(loopPath); } catch (_) {}
+      }
+    }
   }
 
   // مجلد للإطارات

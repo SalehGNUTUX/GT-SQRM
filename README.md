@@ -10,7 +10,7 @@
 [![Platform: Linux](https://img.shields.io/badge/Platform-GNU%2FLinux-orange?logo=linux)](https://github.com/SalehGNUTUX/GT-SQRM)
 [![Electron](https://img.shields.io/badge/Built%20with-Electron-47848F?logo=electron)](https://www.electronjs.org/)
 [![ffmpeg](https://img.shields.io/badge/Export-ffmpeg%20V2-green?logo=ffmpeg)](https://ffmpeg.org/)
-[![Version](https://img.shields.io/badge/Version-3.4.0-brightgreen)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/Version-3.5.0-brightgreen)](./CHANGELOG.md)
 
 </div>
 
@@ -23,6 +23,25 @@
 > 🌐 **النسخة الويب التجريبية متاحة على:** [salehgnutux.github.io/GT-SQR](https://salehgnutux.github.io/GT-SQR/)
 
 ---
+
+## 🆕 الجَديد في v3.5.0 (2026-09-02 — مَنقولٌ مِن GT-SIRM v1.2–v1.3)
+
+أَربَعةُ أَعطابٍ كانَت حَيّةً هُنا مُنذُ النَشأة، وإنَّما كُشِفَت في GT-SIRM لأنَّهُ
+الذي جَرى اختِبارُهُ عَلى الهاتِف:
+
+- **🕋 البَسمَلةُ تُتلى لا تُكتَبُ وَحسب** — نَصُّ `quran-uthmani` يَدمِجُها في الآيةِ
+  الأولى بَينَما مَلَفُّ `everyayah` لا يَتلوها. الآنَ شَريحةٌ مُستَقِلّةٌ صَوتُها
+  `001001.mp3`، مَعَ توگلٍ يَحذِفُها مِنَ النَصِّ والتِلاوةِ مَعاً.
+- **⚡ سَقفُ دِقّةِ التَصدير** — كانَ الحَقلُ عُنصُرَ واجِهةٍ **مَيِّتاً** لا يَقرَؤُهُ
+  أَحَد: تَختارُ 720p فَيُصَدَّرُ 1080p. النُزولُ إلى 720×1280 يَقتَطِعُ 55٪ مِنَ العَمَل.
+- **🎚️ مُقتَرَحاتُ جَودةٍ وتَقديرُ حَجمٍ قَبلَ التَصدير** — يُحسَبانِ مِنَ الأَبعادِ
+  الفِعليّةِ ومُعَدَّلِ الإطارات.
+- **🔁 لُحمةُ الحَلقة** — عَودةُ قائِمةِ المَقاطِعِ مِن آخِرِها إلى أَوَّلِها كانَت
+  قَطعاً حادّاً في التَصديرِ وَحدَه بَينَما المُعاينةُ تَمزُجُها.
+
+> طَبَقةُ التَسليمِ واليَقَظةِ ومُزامَنةُ التَشغيلِ خاصّةٌ بِنُسخةِ الويب: سَطحُ
+> المَكتَبِ يَحفَظُ بِنافِذةِ Electron الأَصليّةِ ويَستَخرِجُ إطاراتِ الخَلفيّةِ
+> بِـffmpeg مُسبَقاً فَلا يُشَغِّلُ فيديو أثناءَ التَصدير.
 
 ## 🆕 الجَديد في v3.4.0 (منقول من GT-SIRM v1.2)
 
@@ -185,7 +204,7 @@
 - **AppImage** (يعمل على كل توزيعات Linux): [GT-SQRM-3.4.0.AppImage](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v3.4.0/GT-SQRM-3.4.0.AppImage)
 - **حزمة Deb** (Debian/Ubuntu/Mint): [gt-sqrm_3.4.0_amd64.deb](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v3.4.0/gt-sqrm_3.4.0_amd64.deb)
 - **حزمة RPM** (Fedora/RHEL/openSUSE): [gt-sqrm-3.4.0-2.x86_64.rpm](https://github.com/SalehGNUTUX/GT-SQRM/releases/download/v3.4.0/gt-sqrm-3.4.0-2.x86_64.rpm)
-- **صَفحة الإصدار الكامِلة**: <https://github.com/SalehGNUTUX/GT-SQRM/releases/tag/v3.4.0>
+- **صَفحة الإصدار الكامِلة**: <https://github.com/SalehGNUTUX/GT-SQRM/releases/tag/v3.5.0>
 
 ### تثبيت AppImage
 ```bash
